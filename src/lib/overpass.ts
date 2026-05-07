@@ -1,9 +1,8 @@
 import type { OsmPoi } from "../types/osm";
 
-// Use Vite proxy in dev to avoid CORS, direct URL in production
-const OVERPASS_URL = import.meta.env.DEV
-  ? "/overpass"
-  : "https://overpass-api.de/api/interpreter";
+// In dev, Vite proxy handles CORS (see vite.config.ts).
+// In prod, hit our Vercel edge function which proxies to overpass-api.de.
+const OVERPASS_URL = import.meta.env.DEV ? "/overpass" : "/api/overpass";
 const MIN_ZOOM = 14;
 const MAX_BBOX_AREA = 0.01; // ~10km x 10km max — keeps queries fast
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
