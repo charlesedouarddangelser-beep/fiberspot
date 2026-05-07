@@ -25,7 +25,7 @@ interface Props {
 }
 
 function pinColor(download: number | null): string {
-  if (download === null) return "#6b7280"; // muted grey — untested
+  if (download === null) return "#e4e4e7"; // off-white — untested
   if (download >= 50) return "#22c55e";    // green — fast
   if (download >= 20) return "#f59e0b";    // orange — medium
   return "#ef4444";                         // red — slow

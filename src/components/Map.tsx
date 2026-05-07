@@ -66,7 +66,7 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
     features: spots.map((spot) => {
       const untested = spot.avg_download === null && spot.avg_upload === null && spot.avg_ping === null;
       let color: string;
-      if (spot.avg_download === null)      color = "#6b7280"; // muted grey — untested
+      if (spot.avg_download === null)      color = "#e4e4e7"; // off-white — untested
       else if (spot.avg_download >= 50)    color = "#22c55e"; // green — fast
       else if (spot.avg_download >= 20)    color = "#f59e0b"; // orange — medium
       else                                  color = "#ef4444"; // red — slow
