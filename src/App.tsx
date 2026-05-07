@@ -28,6 +28,7 @@ export default function App() {
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [selected, setSelected] = useState<Spot | null>(null);
   const [selectedOsmPoi, setSelectedOsmPoi] = useState<OsmPoi | null>(null);
+  const [osmPois, setOsmPois] = useState<OsmPoi[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [tileCache, setTileCache] = useState<Record<string, TileEstimate>>({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -304,8 +305,10 @@ export default function App() {
       >
         <Sidebar
           spots={spots}
+          osmPois={osmPois}
           userLocation={userLocation}
           onSelect={handleSelectSpot}
+          onSelectOsmPoi={handleSelectOsmPoi}
           onAddNew={async () => {
             setSelected(null); setSelectedOsmPoi(null); setNoSpotPrompt(null); setSidebarOpen(false);
             if (userLocation) {
@@ -341,6 +344,7 @@ export default function App() {
             }
           }}
           onLongPress={handleMapLongPress}
+          onOsmPoisChange={setOsmPois}
         />
         <button className="mobile-toggle" onClick={() => setSidebarOpen((v) => !v)}>
           {sidebarOpen ? "✕" : "☰"} Spots

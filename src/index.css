@@ -1283,6 +1283,24 @@ body {
   color: var(--green);
 }
 
+/* ---------- OSM POI cards in the sidebar list ---------- */
+.osm-card {
+  border-style: dashed;
+  opacity: 0.85;
+}
+.osm-card:hover {
+  opacity: 1;
+}
+.osm-dot {
+  background: transparent !important;
+  border: 1.5px dashed var(--green);
+}
+.osm-hint {
+  color: var(--text-dim);
+  font-style: italic;
+  font-size: 11px;
+}
+
 /* ---------- Owner actions (edit / delete) ---------- */
 
 .owner-actions {

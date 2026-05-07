@@ -16,14 +16,21 @@ interface Props {
   onSelectOsmPoi: (poi: OsmPoi) => void;
   onRecenter: () => void;
   onLongPress: (lng: number, lat: number) => void;
+  onOsmPoisChange?: (pois: OsmPoi[]) => void;
 }
 
-export default function Map({ spots, center, zoom, userLocation, onSelectSpot, onSelectOsmPoi, onRecenter, onLongPress }: Props) {
+export default function Map({ spots, center, zoom, userLocation, onSelectSpot, onSelectOsmPoi, onRecenter, onLongPress, onOsmPoisChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
   const { osmPois } = useOverpassPois(mapRef, spots);
+
+  // Surface the latest POI set to the parent so the sidebar can list
+  // them alongside user-spots.
+  useEffect(() => {
+    onOsmPoisChange?.(osmPois);
+  }, [osmPois, onOsmPoisChange]);
 
   // Stable callback refs to avoid stale closures in map event handlers
   const onSelectOsmPoiRef = useRef(onSelectOsmPoi);
