@@ -25,10 +25,10 @@ interface Props {
 }
 
 function pinColor(download: number | null): string {
-  if (download === null) return "#00994d";
-  if (download >= 50) return "#00ff41";
-  if (download >= 20) return "#39ff14";
-  return "#ff3131";
+  if (download === null) return "#6b7280"; // muted grey — untested
+  if (download >= 50) return "#22c55e";    // green — fast
+  if (download >= 20) return "#f59e0b";    // orange — medium
+  return "#ef4444";                         // red — slow
 }
 
 function formatDist(m: number): string {

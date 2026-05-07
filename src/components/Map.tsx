@@ -66,10 +66,10 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
     features: spots.map((spot) => {
       const untested = spot.avg_download === null && spot.avg_upload === null && spot.avg_ping === null;
       let color: string;
-      if (spot.avg_download === null) color = "#00994d";     // dark green — untested
-      else if (spot.avg_download >= 50) color = "#00ff41";   // bright matrix green — fast
-      else if (spot.avg_download >= 20) color = "#39ff14";   // neon green — medium
-      else color = "#ff3131";                                 // red — slow
+      if (spot.avg_download === null)      color = "#6b7280"; // muted grey — untested
+      else if (spot.avg_download >= 50)    color = "#22c55e"; // green — fast
+      else if (spot.avg_download >= 20)    color = "#f59e0b"; // orange — medium
+      else                                  color = "#ef4444"; // red — slow
 
       return {
         type: "Feature" as const,
@@ -169,10 +169,10 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
         paint: {
           "circle-radius": ["interpolate", ["linear"], ["zoom"], 13, 4, 16, 7, 18, 9],
           "circle-color": ["get", "color"],
-          "circle-opacity": 0.9,
-          "circle-stroke-color": "#00ff41",
+          "circle-opacity": 0.95,
+          "circle-stroke-color": ["get", "color"],
           "circle-stroke-width": 1.5,
-          "circle-stroke-opacity": 0.6,
+          "circle-stroke-opacity": 1,
         },
       });
 
@@ -191,7 +191,7 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
           "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
         },
         paint: {
-          "text-color": "#00ff41",
+          "text-color": ["get", "color"],
           "text-halo-color": "#000000",
           "text-halo-width": 1.2,
         },
@@ -232,9 +232,21 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
       }
 
       // ---- Long-press / right-click → add a spot at the tapped point ----
-      // Touch: 600ms hold without movement.
+      // Touch: 600ms hold with the finger near where it landed (≤14px in
+      // screen space). Without a movement tolerance, normal finger jitter
+      // would cancel the timer immediately on most iOS devices.
       // Desktop: contextmenu (right-click) for an instant equivalent.
       let pressTimer: ReturnType<typeof setTimeout> | null = null;
+      let pressStart: { x: number; y: number } | null = null;
+      const MOVE_TOLERANCE_PX = 14;
+
+      const cancelPress = () => {
+        if (pressTimer) {
+          clearTimeout(pressTimer);
+          pressTimer = null;
+        }
+        pressStart = null;
+      };
 
       map.on("touchstart", (e) => {
         // Skip multi-touch (pinch zoom) and presses on existing markers.
@@ -244,20 +256,25 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
         });
         if (features.length > 0) return;
         const lngLat = e.lngLat;
+        pressStart = { x: e.point.x, y: e.point.y };
         pressTimer = setTimeout(() => {
           if (navigator.vibrate) navigator.vibrate(40);
           onLongPressRef.current(lngLat.lng, lngLat.lat);
           pressTimer = null;
+          pressStart = null;
         }, 600);
       });
-      const cancelPress = () => {
-        if (pressTimer) {
-          clearTimeout(pressTimer);
-          pressTimer = null;
+
+      map.on("touchmove", (e) => {
+        if (!pressTimer || !pressStart) return;
+        const dx = e.point.x - pressStart.x;
+        const dy = e.point.y - pressStart.y;
+        if (dx * dx + dy * dy > MOVE_TOLERANCE_PX * MOVE_TOLERANCE_PX) {
+          cancelPress();
         }
-      };
+      });
+
       map.on("touchend", cancelPress);
-      map.on("touchmove", cancelPress);
       map.on("touchcancel", cancelPress);
 
       map.on("contextmenu", (e) => {
