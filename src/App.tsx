@@ -32,7 +32,12 @@ export default function App() {
   const [showForm, setShowForm] = useState(false);
   const [tileCache, setTileCache] = useState<Record<string, TileEstimate>>({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [noSpotPrompt, setNoSpotPrompt] = useState<{ name: string; lat: number; lng: number } | null>(null);
+  const [noSpotPrompt, setNoSpotPrompt] = useState<{
+    name: string;        // shown as the place line in the prompt
+    lat: number;
+    lng: number;
+    address?: string;    // reverse-geocoded address — prefilled into the form's Address field
+  } | null>(null);
   const [formPrefill, setFormPrefill] = useState<{ name: string; lat: number; lng: number; type?: string; address?: string } | null>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const dragStart = useRef<number | null>(null);
@@ -271,12 +276,15 @@ export default function App() {
     setSidebarOpen(false);
     setCenter([lng, lat]);
 
-    // Reverse-geocode to fill in a sensible name and address upfront.
+    // Reverse-geocode to show the address in the prompt and pass it
+    // through to the form's Address field. The Name field stays empty
+    // — an address isn't a name, the user picks one.
     const addr = await reverseGeocode(lat, lng);
     setNoSpotPrompt({
       name: addr ?? "this location",
       lat,
       lng,
+      address: addr ?? undefined,
     });
   }, [spots]);
 
@@ -409,7 +417,17 @@ export default function App() {
                 type="button"
                 className="btn-primary"
                 onClick={() => {
-                  setFormPrefill(noSpotPrompt);
+                  // If we reverse-geocoded an address (long-press flow),
+                  // route it to the Address field and leave Name empty
+                  // for the user to fill. If the prompt came from a
+                  // POI search, the name itself is meaningful — keep it.
+                  const fromAddress = !!noSpotPrompt.address;
+                  setFormPrefill({
+                    name: fromAddress ? "" : noSpotPrompt.name,
+                    lat: noSpotPrompt.lat,
+                    lng: noSpotPrompt.lng,
+                    address: noSpotPrompt.address,
+                  });
                   setShowForm(true);
                   setNoSpotPrompt(null);
                 }}
