@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Map as MapboxMap } from "mapbox-gl";
 import type { Spot } from "../types/spot";
 import type { OsmPoi } from "../types/osm";
-import { fetchOverpassPois, shouldFetch } from "../lib/overpass";
+import { fetchOverpassPois, shouldFetch } from "../lib/mapbox-pois";
 import { haversineMeters } from "../lib/geo";
 
 const DEBOUNCE_MS = 500;
