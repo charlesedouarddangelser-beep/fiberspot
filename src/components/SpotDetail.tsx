@@ -4,6 +4,7 @@ import { runSpeedTest } from "../lib/speedtest";
 import { getUserLocation, haversineMeters } from "../lib/geo";
 import { submitSpeedtest } from "../lib/api";
 import { useToast } from "../lib/toast";
+import SpeedHistory from "./SpeedHistory";
 
 interface TileEstimate {
   avg_d_kbps: number;
@@ -173,6 +174,7 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }
             <Bar label="Upload" value={spot.avg_upload} max={100} unit="Mbps" color="#3b82f6" />
             <Bar label="Ping" value={spot.avg_ping} max={100} unit="ms" color="#f59e0b" />
           </div>
+          <SpeedHistory spotId={spot.id} />
           <button className="btn-secondary full" onClick={handleTest} disabled={testing}>
             {testing ? phase || "Testing..." : "Re-test speed"}
           </button>

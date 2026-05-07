@@ -91,7 +91,9 @@ export default async function handler(req: Request) {
   });
   if (!rate.ok) return fail("Rate limit exceeded — try again later", 429);
 
-  const { data, error } = await supabaseAdmin
+  // Insert the spot first with no avg_* — those fields are now a
+  // denormalised cache populated by the speed_tests trigger.
+  const { data: created, error: createErr } = await supabaseAdmin
     .from("spots")
     .insert({
       name: body.name.trim(),
@@ -101,19 +103,51 @@ export default async function handler(req: Request) {
         : null,
       lat: body.lat,
       lng: body.lng,
-      avg_download: (body.avg_download as number | null | undefined) ?? null,
-      avg_upload: (body.avg_upload as number | null | undefined) ?? null,
-      avg_ping: (body.avg_ping as number | null | undefined) ?? null,
       tags: (body.tags as string[] | null | undefined) ?? null,
       author_id: user?.id ?? null,
     })
     .select()
     .single();
 
-  if (error) {
-    console.error("Create spot failed:", error);
+  if (createErr || !created) {
+    console.error("Create spot failed:", createErr);
     return fail("Failed to save spot", 500);
   }
 
-  return json({ spot: data }, 201);
+  // If the form included a speedtest, append it to the history. The
+  // trigger fills in spots.avg_* and last_tested_at.
+  const hasTest =
+    typeof body.avg_download === "number" &&
+    typeof body.avg_upload === "number" &&
+    typeof body.avg_ping === "number";
+
+  if (hasTest) {
+    const { error: testErr } = await supabaseAdmin
+      .from("speed_tests")
+      .insert({
+        spot_id: created.id,
+        user_id: user?.id ?? null,
+        download: body.avg_download,
+        upload: body.avg_upload,
+        ping: body.avg_ping,
+        lat: body.lat,
+        lng: body.lng,
+      });
+
+    if (testErr) {
+      // The spot is created; just log the test failure and return what
+      // we have. The user can re-test later.
+      console.error("Initial speedtest insert failed:", testErr);
+    } else {
+      // Re-read so the response includes the recomputed averages.
+      const { data: refreshed } = await supabaseAdmin
+        .from("spots")
+        .select()
+        .eq("id", created.id)
+        .single();
+      if (refreshed) return json({ spot: refreshed }, 201);
+    }
+  }
+
+  return json({ spot: created }, 201);
 }

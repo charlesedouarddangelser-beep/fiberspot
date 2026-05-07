@@ -76,22 +76,38 @@ export default async function handler(req: Request) {
   });
   if (!rate.ok) return fail("Rate limit exceeded — try again later", 429);
 
-  const { data, error } = await supabaseAdmin
-    .from("spots")
-    .update({
-      avg_download: body.download,
-      avg_upload: body.upload,
-      avg_ping: body.ping,
-      last_tested_at: new Date().toISOString(),
-    })
-    .eq("id", body.spot_id)
-    .select()
-    .single();
+  // Append the test to the history table; an after-insert trigger
+  // recomputes spots.avg_* and spots.last_tested_at from the rolling
+  // history. The denormalised fields on `spots` are a cache, not a
+  // source of truth.
+  const { error: insertErr } = await supabaseAdmin
+    .from("speed_tests")
+    .insert({
+      spot_id: body.spot_id,
+      user_id: user?.id ?? null,
+      download: body.download,
+      upload: body.upload,
+      ping: body.ping,
+      lat: body.lat,
+      lng: body.lng,
+    });
 
-  if (error) {
-    console.error("Speedtest update failed:", error);
+  if (insertErr) {
+    console.error("Speedtest insert failed:", insertErr);
     return fail("Failed to save speedtest", 500);
   }
 
-  return json({ spot: data }, 200);
+  // Re-read the spot so the client gets the freshly recomputed averages.
+  const { data: updated, error: readErr } = await supabaseAdmin
+    .from("spots")
+    .select()
+    .eq("id", body.spot_id)
+    .single();
+
+  if (readErr || !updated) {
+    console.error("Speedtest re-read failed:", readErr);
+    return fail("Saved but could not refresh spot", 500);
+  }
+
+  return json({ spot: updated }, 200);
 }
