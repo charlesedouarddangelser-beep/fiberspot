@@ -7,6 +7,7 @@ import OsmPoiDetail from "./components/OsmPoiDetail";
 import DonateModal from "./components/DonateModal";
 import { supabase } from "./lib/supabase";
 import { createSpot } from "./lib/api";
+import { useToast } from "./lib/toast";
 import { getUserLocation, haversineMeters } from "./lib/geo";
 import { latLngToQuadkey } from "./lib/quadkey";
 import type { Spot, SpotInsert } from "./types/spot";
@@ -19,6 +20,7 @@ interface TileEstimate {
 }
 
 export default function App() {
+  const toast = useToast();
   const [spots, setSpots] = useState<Spot[]>([]);
   const [center, setCenter] = useState<[number, number]>([-73.985, 40.748]);
   const [zoom, setZoom] = useState(13);
@@ -111,11 +113,12 @@ export default function App() {
     try {
       await createSpot(spot);
     } catch (e) {
-      alert("Failed to save: " + (e as Error).message);
+      toast((e as Error).message || "Failed to save the spot", "error");
       return;
     }
     await fetchSpots();
     setShowForm(false);
+    toast("Spot added", "success");
   }
 
   // Fetch Ookla tile estimate for a spot
@@ -240,7 +243,7 @@ export default function App() {
               setCenter([pos.lng, pos.lat]);
               setZoom(15);
             } catch {
-              alert("Could not get your location. Please enable GPS.");
+              toast("Could not get your location. Please enable GPS.", "error");
             }
           }}
         />

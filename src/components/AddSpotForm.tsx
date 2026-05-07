@@ -3,6 +3,7 @@ import type { SpotInsert } from "../types/spot";
 import { getUserLocation } from "../lib/geo";
 import { runSpeedTest as runFullSpeedTest } from "../lib/speedtest";
 import type { SpeedResult } from "../lib/speedtest";
+import { useToast } from "../lib/toast";
 
 const TYPES = ["Cafe", "Library", "Coworking", "Hotel", "Restaurant", "Park", "Other"];
 
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function AddSpotForm({ onSubmit, onCancel, initialName, initialLat, initialLng, initialType, initialAddress }: Props) {
+  const toast = useToast();
   const [name, setName] = useState(initialName ?? "");
   const [type, setType] = useState(initialType ?? "Cafe");
   const [address, setAddress] = useState(initialAddress ?? "");
@@ -42,7 +44,7 @@ export default function AddSpotForm({ onSubmit, onCancel, initialName, initialLa
       setLat(pos.lat);
       setLng(pos.lng);
     } catch {
-      alert("Could not detect location. Please allow geolocation access.");
+      toast("Could not detect location. Please allow geolocation access.", "error");
     }
     setLocating(false);
   }
@@ -53,7 +55,7 @@ export default function AddSpotForm({ onSubmit, onCancel, initialName, initialLa
       const result = await runFullSpeedTest();
       setSpeed(result);
     } catch {
-      alert("Speed test failed.");
+      toast("Speed test failed. Check your connection.", "error");
     }
     setTesting(false);
   }
@@ -61,7 +63,7 @@ export default function AddSpotForm({ onSubmit, onCancel, initialName, initialLa
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (lat === null || lng === null) {
-      alert("Please detect your location first.");
+      toast("Please detect your location first.", "error");
       return;
     }
     setSubmitting(true);

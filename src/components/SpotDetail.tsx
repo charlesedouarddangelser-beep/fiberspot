@@ -3,6 +3,7 @@ import type { Spot } from "../types/spot";
 import { runSpeedTest } from "../lib/speedtest";
 import { getUserLocation, haversineMeters } from "../lib/geo";
 import { submitSpeedtest } from "../lib/api";
+import { useToast } from "../lib/toast";
 
 interface TileEstimate {
   avg_d_kbps: number;
@@ -62,6 +63,7 @@ const hasSpeedData = (spot: Spot) =>
   spot.avg_download !== null || spot.avg_upload !== null || spot.avg_ping !== null;
 
 export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }: Props) {
+  const toast = useToast();
   const [testing, setTesting] = useState(false);
   const [phase, setPhase] = useState("");
   const [estimate, setEstimate] = useState<TileEstimate | null>(null);
@@ -134,12 +136,13 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }
           upload: result.upload,
           ping: result.ping,
         });
+        toast("Speed test saved", "success");
         onUpdated();
       } catch (e) {
-        alert("Failed to save result: " + (e as Error).message);
+        toast((e as Error).message || "Failed to save the speed test", "error");
       }
     } catch {
-      alert("Speed test failed. Check your connection.");
+      toast("Speed test failed. Check your connection.", "error");
     }
     setTesting(false);
     setPhase("");
