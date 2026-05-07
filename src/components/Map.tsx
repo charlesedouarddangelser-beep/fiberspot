@@ -115,11 +115,11 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
         source: "osm-pois",
         paint: {
           "circle-radius": ["interpolate", ["linear"], ["zoom"], 13, 3, 16, 5, 18, 7],
-          "circle-color": "#00ff41",
-          "circle-opacity": 0.3,
-          "circle-stroke-color": "#00ff41",
+          "circle-color": "#e4e4e7",
+          "circle-opacity": 0.18,
+          "circle-stroke-color": "#e4e4e7",
           "circle-stroke-width": 1,
-          "circle-stroke-opacity": 0.5,
+          "circle-stroke-opacity": 0.45,
         },
       });
 
@@ -137,10 +137,10 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
           "text-allow-overlap": false,
         },
         paint: {
-          "text-color": "#00ff41",
+          "text-color": "#e4e4e7",
           "text-halo-color": "#000000",
           "text-halo-width": 1.2,
-          "text-opacity": 0.7,
+          "text-opacity": 0.55,
         },
       });
 
