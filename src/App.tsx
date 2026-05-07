@@ -195,6 +195,21 @@ export default function App() {
     return null;
   }
 
+  const handleAddNew = useCallback(async () => {
+    setSelected(null);
+    setSelectedOsmPoi(null);
+    setNoSpotPrompt(null);
+    setSidebarOpen(false);
+    if (userLocation) {
+      const [lng, lat] = userLocation;
+      const addr = await reverseGeocode(lat, lng);
+      setFormPrefill({ name: "", lat, lng, address: addr ?? undefined });
+    } else {
+      setFormPrefill(null);
+    }
+    setShowForm(true);
+  }, [userLocation]);
+
   const handleSelectSpot = useCallback((spot: Spot) => {
     setSelected(spot);
     setSelectedOsmPoi(null);
@@ -309,17 +324,7 @@ export default function App() {
           userLocation={userLocation}
           onSelect={handleSelectSpot}
           onSelectOsmPoi={handleSelectOsmPoi}
-          onAddNew={async () => {
-            setSelected(null); setSelectedOsmPoi(null); setNoSpotPrompt(null); setSidebarOpen(false);
-            if (userLocation) {
-              const [lng, lat] = userLocation;
-              const addr = await reverseGeocode(lat, lng);
-              setFormPrefill({ name: "", lat, lng, address: addr ?? undefined });
-            } else {
-              setFormPrefill(null);
-            }
-            setShowForm(true);
-          }}
+          onAddNew={handleAddNew}
           onFlyTo={(c) => { setCenter(c); setZoom(13); }}
           onSearchSelect={handleSearchSelect}
         />
@@ -379,20 +384,41 @@ export default function App() {
         />
       )}
       {noSpotPrompt && !showForm && !selected && !selectedOsmPoi && (
-        <div className="no-spot-prompt">
-          <p>No spot here yet — add it?</p>
-          <button
-            className="btn-primary"
-            onClick={() => {
-              setFormPrefill(noSpotPrompt);
-              setShowForm(true);
-              setNoSpotPrompt(null);
-            }}
-          >
-            + Add "{noSpotPrompt.name}"
-          </button>
-          <button className="no-spot-dismiss" onClick={() => setNoSpotPrompt(null)}>✕</button>
-        </div>
+        <>
+          <div
+            className="prompt-backdrop"
+            onClick={() => setNoSpotPrompt(null)}
+            aria-hidden
+          />
+          <div className="no-spot-prompt" role="dialog">
+            <div className="no-spot-prompt-text">
+              <p className="no-spot-prompt-title">Add a spot here?</p>
+              <p className="no-spot-prompt-place" title={noSpotPrompt.name}>
+                {noSpotPrompt.name}
+              </p>
+            </div>
+            <div className="no-spot-prompt-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setNoSpotPrompt(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => {
+                  setFormPrefill(noSpotPrompt);
+                  setShowForm(true);
+                  setNoSpotPrompt(null);
+                }}
+              >
+                + Add
+              </button>
+            </div>
+          </div>
+        </>
       )}
       {showForm && (
         <AddSpotForm

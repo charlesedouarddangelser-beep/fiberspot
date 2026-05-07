@@ -734,6 +734,13 @@ body {
 }
 
 /* No-spot prompt */
+.prompt-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  background: transparent;
+}
+
 .no-spot-prompt {
   position: absolute;
   bottom: 32px;
@@ -741,40 +748,47 @@ body {
   transform: translateX(-50%);
   z-index: 10;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 12px;
-  padding: 12px 20px;
+  padding: 14px 16px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  white-space: nowrap;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+  width: min(380px, calc(100vw - 32px));
   animation: fade-in-up 0.25s ease-out;
 }
 
-.no-spot-prompt p {
-  font-size: 14px;
-  color: var(--text);
-  margin: 0;
+.no-spot-prompt-text {
+  min-width: 0;
 }
 
-.no-spot-prompt .btn-primary {
+.no-spot-prompt-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0 0 2px;
+}
+
+.no-spot-prompt-place {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.no-spot-prompt-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.no-spot-prompt-actions button {
   padding: 8px 16px;
   font-size: 13px;
-  white-space: nowrap;
-}
-
-.no-spot-dismiss {
-  background: none;
-  border: none;
-  color: var(--text-dim);
-  font-size: 16px;
-  cursor: pointer;
-  padding: 4px;
-  line-height: 1;
-}
-.no-spot-dismiss:hover {
-  color: var(--text);
+  min-height: 38px;
 }
 
 @keyframes fade-in-up {
