@@ -4,12 +4,15 @@ import { getUserLocation } from "../lib/geo";
 import { runSpeedTest as runFullSpeedTest } from "../lib/speedtest";
 import type { SpeedResult } from "../lib/speedtest";
 import { useToast } from "../lib/toast";
+import PlacesAutocomplete from "./PlacesAutocomplete";
+import type { PlaceFeature } from "../lib/mapbox-search";
 
 const TYPES = ["Cafe", "Library", "Coworking", "Hotel", "Restaurant", "Park", "Other"];
 
 interface Props {
   onSubmit: (spot: SpotInsert) => Promise<void>;
   onCancel: () => void;
+  userLocation?: [number, number] | null;
   initialName?: string;
   initialLat?: number;
   initialLng?: number;
@@ -17,7 +20,16 @@ interface Props {
   initialAddress?: string;
 }
 
-export default function AddSpotForm({ onSubmit, onCancel, initialName, initialLat, initialLng, initialType, initialAddress }: Props) {
+export default function AddSpotForm({
+  onSubmit,
+  onCancel,
+  userLocation,
+  initialName,
+  initialLat,
+  initialLng,
+  initialType,
+  initialAddress,
+}: Props) {
   const toast = useToast();
   const [name, setName] = useState(initialName ?? "");
   const [type, setType] = useState(initialType ?? "Cafe");
@@ -25,17 +37,29 @@ export default function AddSpotForm({ onSubmit, onCancel, initialName, initialLa
   const [tags, setTags] = useState("");
   const [lat, setLat] = useState<number | null>(initialLat ?? null);
   const [lng, setLng] = useState<number | null>(initialLng ?? null);
+  const [pickedFromSearch, setPickedFromSearch] = useState(initialLat != null && initialLng != null);
   const [speed, setSpeed] = useState<SpeedResult | null>(null);
   const [locating, setLocating] = useState(false);
   const [testing, setTesting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Resync local state when parent updates the prefill props (defensive — root cause is fixed in App.tsx)
+  // Resync local state when parent updates the prefill props.
   useEffect(() => { if (initialName !== undefined) setName(initialName); }, [initialName]);
   useEffect(() => { if (initialType !== undefined) setType(initialType); }, [initialType]);
   useEffect(() => { if (initialAddress !== undefined) setAddress(initialAddress); }, [initialAddress]);
   useEffect(() => { if (initialLat !== undefined) setLat(initialLat); }, [initialLat]);
   useEffect(() => { if (initialLng !== undefined) setLng(initialLng); }, [initialLng]);
+
+  function handlePickPlace(feature: PlaceFeature) {
+    setName(feature.name);
+    setLat(feature.lat);
+    setLng(feature.lng);
+    if (feature.full_address) setAddress(feature.full_address);
+    if (feature.inferred_type && TYPES.includes(feature.inferred_type)) {
+      setType(feature.inferred_type);
+    }
+    setPickedFromSearch(true);
+  }
 
   async function detectLocation() {
     setLocating(true);
@@ -43,6 +67,7 @@ export default function AddSpotForm({ onSubmit, onCancel, initialName, initialLa
       const pos = await getUserLocation();
       setLat(pos.lat);
       setLng(pos.lng);
+      setPickedFromSearch(false);
     } catch {
       toast("Could not detect location. Please allow geolocation access.", "error");
     }
@@ -63,7 +88,7 @@ export default function AddSpotForm({ onSubmit, onCancel, initialName, initialLa
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (lat === null || lng === null) {
-      toast("Please detect your location first.", "error");
+      toast("Pick a place from the search, or tap Detect Location.", "error");
       return;
     }
     setSubmitting(true);
@@ -81,14 +106,26 @@ export default function AddSpotForm({ onSubmit, onCancel, initialName, initialLa
     setSubmitting(false);
   }
 
+  const hasLocation = lat !== null && lng !== null;
+
   return (
     <div className="detail-panel form-panel">
       <button className="detail-close" onClick={onCancel}>✕</button>
-      <h2>Add New Spot</h2>
+      <h2>Add a spot</h2>
       <form onSubmit={handleSubmit}>
         <label>
           Name
-          <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Coffee Corner" />
+          <PlacesAutocomplete
+            value={name}
+            onChange={setName}
+            onPick={handlePickPlace}
+            proximity={userLocation ?? undefined}
+            placeholder="Search a cafe, hotel, address…"
+            required
+          />
+          {pickedFromSearch && hasLocation && (
+            <span className="form-hint">📍 Location picked from search</span>
+          )}
         </label>
 
         <label>
@@ -108,11 +145,13 @@ export default function AddSpotForm({ onSubmit, onCancel, initialName, initialLa
           <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="quiet, power outlets" />
         </label>
 
-        <div className="form-row">
-          <button type="button" className="btn-secondary" onClick={detectLocation} disabled={locating}>
-            {locating ? "Detecting..." : lat !== null && lng !== null ? `📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}` : "Detect Location"}
-          </button>
-        </div>
+        {!pickedFromSearch && (
+          <div className="form-row">
+            <button type="button" className="btn-secondary" onClick={detectLocation} disabled={locating}>
+              {locating ? "Detecting..." : hasLocation ? `📍 ${lat!.toFixed(4)}, ${lng!.toFixed(4)}` : "Use my current location"}
+            </button>
+          </div>
+        )}
 
         <div className="form-row">
           <button type="button" className="btn-secondary" onClick={handleSpeedTest} disabled={testing}>

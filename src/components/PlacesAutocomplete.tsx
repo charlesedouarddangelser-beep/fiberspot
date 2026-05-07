@@ -1,0 +1,120 @@
+import { useEffect, useRef, useState } from "react";
+import {
+  suggestPlaces,
+  retrievePlace,
+  type PlaceFeature,
+  type PlaceSuggestion,
+} from "../lib/mapbox-search";
+
+interface Props {
+  value: string;
+  onChange: (next: string) => void;
+  onPick: (feature: PlaceFeature) => void;
+  proximity?: [number, number]; // [lng, lat] for biasing suggestions
+  placeholder?: string;
+  required?: boolean;
+}
+
+export default function PlacesAutocomplete({
+  value,
+  onChange,
+  onPick,
+  proximity,
+  placeholder,
+  required,
+}: Props) {
+  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const sessionTokenRef = useRef<string>(crypto.randomUUID());
+  const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Debounced suggest as the user types
+  useEffect(() => {
+    if (value.trim().length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      abortRef.current?.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
+      setLoading(true);
+      suggestPlaces({
+        query: value,
+        sessionToken: sessionTokenRef.current,
+        proximity,
+        signal: ac.signal,
+      })
+        .then((s) => {
+          if (ac.signal.aborted) return;
+          setSuggestions(s);
+          setOpen(s.length > 0);
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (!ac.signal.aborted) setLoading(false);
+        });
+    }, 250);
+    return () => clearTimeout(debounceRef.current);
+  }, [value, proximity]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
+  async function handlePick(s: PlaceSuggestion) {
+    setOpen(false);
+    setSuggestions([]);
+    onChange(s.name);
+    const feature = await retrievePlace({
+      mapbox_id: s.mapbox_id,
+      sessionToken: sessionTokenRef.current,
+    });
+    if (feature) {
+      onPick(feature);
+      // Start a fresh session for the next search.
+      sessionTokenRef.current = crypto.randomUUID();
+    }
+  }
+
+  return (
+    <div className="places-autocomplete" ref={containerRef}>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => suggestions.length > 0 && setOpen(true)}
+        placeholder={placeholder}
+        required={required}
+        autoComplete="off"
+      />
+      {loading && <span className="places-loading" aria-hidden>…</span>}
+      {open && suggestions.length > 0 && (
+        <ul className="places-results">
+          {suggestions.map((s) => (
+            <li key={s.mapbox_id} onMouseDown={(e) => { e.preventDefault(); handlePick(s); }}>
+              <span className="places-name">{s.name}</span>
+              {(s.place_formatted || s.full_address) && (
+                <span className="places-address">
+                  {s.place_formatted || s.full_address}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

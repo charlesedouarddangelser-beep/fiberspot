@@ -225,6 +225,45 @@ export default function App() {
     setSelectedOsmPoi(null);
   }, []);
 
+  const handleMapLongPress = useCallback(async (lng: number, lat: number) => {
+    // If there's already a spot within 50m, surface it instead of starting
+    // a new one — long-pressing right next to an existing marker most
+    // likely means "I want THAT spot, my finger missed".
+    let nearest: Spot | null = null;
+    let nearestDist = Infinity;
+    for (const s of spots) {
+      const d = haversineMeters(lat, lng, s.lat, s.lng);
+      if (d <= 50 && d < nearestDist) {
+        nearest = s;
+        nearestDist = d;
+      }
+    }
+    if (nearest) {
+      setSelected(nearest);
+      setSelectedOsmPoi(null);
+      setShowForm(false);
+      setNoSpotPrompt(null);
+      setSidebarOpen(false);
+      setCenter([nearest.lng, nearest.lat]);
+      setZoom(15);
+      return;
+    }
+
+    setSelected(null);
+    setSelectedOsmPoi(null);
+    setShowForm(false);
+    setSidebarOpen(false);
+    setCenter([lng, lat]);
+
+    // Reverse-geocode to fill in a sensible name and address upfront.
+    const addr = await reverseGeocode(lat, lng);
+    setNoSpotPrompt({
+      name: addr ?? "this location",
+      lat,
+      lng,
+    });
+  }, [spots]);
+
   const handleSearchSelect = useCallback((center: [number, number], placeName: string) => {
     const [lng, lat] = center;
     setCenter(center);
@@ -301,6 +340,7 @@ export default function App() {
               toast("Could not get your location. Please enable GPS.", "error");
             }
           }}
+          onLongPress={handleMapLongPress}
         />
         <button className="mobile-toggle" onClick={() => setSidebarOpen((v) => !v)}>
           {sidebarOpen ? "✕" : "☰"} Spots
@@ -354,6 +394,7 @@ export default function App() {
         <AddSpotForm
           onSubmit={addSpot}
           onCancel={() => { setShowForm(false); setFormPrefill(null); }}
+          userLocation={userLocation}
           initialName={formPrefill?.name}
           initialLat={formPrefill?.lat}
           initialLng={formPrefill?.lng}

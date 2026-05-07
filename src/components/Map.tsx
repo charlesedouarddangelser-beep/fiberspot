@@ -15,9 +15,10 @@ interface Props {
   onSelectSpot: (spot: Spot) => void;
   onSelectOsmPoi: (poi: OsmPoi) => void;
   onRecenter: () => void;
+  onLongPress: (lng: number, lat: number) => void;
 }
 
-export default function Map({ spots, center, zoom, userLocation, onSelectSpot, onSelectOsmPoi, onRecenter }: Props) {
+export default function Map({ spots, center, zoom, userLocation, onSelectSpot, onSelectOsmPoi, onRecenter, onLongPress }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
@@ -29,6 +30,8 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
   onSelectOsmPoiRef.current = onSelectOsmPoi;
   const onSelectSpotRef = useRef(onSelectSpot);
   onSelectSpotRef.current = onSelectSpot;
+  const onLongPressRef = useRef(onLongPress);
+  onLongPressRef.current = onLongPress;
   const spotsRef = useRef(spots);
   spotsRef.current = spots;
 
@@ -220,6 +223,44 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
           map.getCanvas().style.cursor = "";
         });
       }
+
+      // ---- Long-press / right-click → add a spot at the tapped point ----
+      // Touch: 600ms hold without movement.
+      // Desktop: contextmenu (right-click) for an instant equivalent.
+      let pressTimer: ReturnType<typeof setTimeout> | null = null;
+
+      map.on("touchstart", (e) => {
+        // Skip multi-touch (pinch zoom) and presses on existing markers.
+        if (e.originalEvent.touches.length !== 1) return;
+        const features = map.queryRenderedFeatures(e.point, {
+          layers: ["spots-circles", "osm-pois-circles"],
+        });
+        if (features.length > 0) return;
+        const lngLat = e.lngLat;
+        pressTimer = setTimeout(() => {
+          if (navigator.vibrate) navigator.vibrate(40);
+          onLongPressRef.current(lngLat.lng, lngLat.lat);
+          pressTimer = null;
+        }, 600);
+      });
+      const cancelPress = () => {
+        if (pressTimer) {
+          clearTimeout(pressTimer);
+          pressTimer = null;
+        }
+      };
+      map.on("touchend", cancelPress);
+      map.on("touchmove", cancelPress);
+      map.on("touchcancel", cancelPress);
+
+      map.on("contextmenu", (e) => {
+        e.preventDefault();
+        const features = map.queryRenderedFeatures(e.point, {
+          layers: ["spots-circles", "osm-pois-circles"],
+        });
+        if (features.length > 0) return;
+        onLongPressRef.current(e.lngLat.lng, e.lngLat.lat);
+      });
     });
 
     mapRef.current = map;
