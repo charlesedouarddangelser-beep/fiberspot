@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Spot } from "../types/spot";
 import { runSpeedTest } from "../lib/speedtest";
 import { getUserLocation, haversineMeters } from "../lib/geo";
-import { supabase } from "../lib/supabase";
+import { submitSpeedtest } from "../lib/api";
 
 interface TileEstimate {
   avg_d_kbps: number;
@@ -92,11 +92,13 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }
     setTesting(true);
     setTooFarMsg("");
 
-    // Fresh location check before testing
+    // Fresh location check before testing — kept locally so we can pass
+    // it to the server-side speedtest endpoint (which re-checks the gate).
+    let userPos: { lat: number; lng: number };
     try {
       setPhase("Checking location...");
-      const pos = await getUserLocation();
-      const d = haversineMeters(pos.lat, pos.lng, spot.lat, spot.lng);
+      userPos = await getUserLocation();
+      const d = haversineMeters(userPos.lat, userPos.lng, spot.lat, spot.lng);
       setDistance(d);
 
       if (d > MAX_DISTANCE) {
@@ -123,19 +125,18 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }
       clearTimeout(timerId);
       clearTimeout(timerId2);
 
-      const { error } = await supabase
-        .from("spots")
-        .update({
-          avg_download: result.download,
-          avg_upload: result.upload,
-          avg_ping: result.ping,
-          last_tested_at: new Date().toISOString(),
-        })
-        .eq("id", spot.id);
-      if (error) {
-        alert("Failed to save result: " + error.message);
-      } else {
+      try {
+        await submitSpeedtest({
+          spot_id: spot.id,
+          lat: userPos.lat,
+          lng: userPos.lng,
+          download: result.download,
+          upload: result.upload,
+          ping: result.ping,
+        });
         onUpdated();
+      } catch (e) {
+        alert("Failed to save result: " + (e as Error).message);
       }
     } catch {
       alert("Speed test failed. Check your connection.");

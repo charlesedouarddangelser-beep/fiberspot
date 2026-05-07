@@ -6,6 +6,7 @@ import AddSpotForm from "./components/AddSpotForm";
 import OsmPoiDetail from "./components/OsmPoiDetail";
 import DonateModal from "./components/DonateModal";
 import { supabase } from "./lib/supabase";
+import { createSpot } from "./lib/api";
 import { getUserLocation, haversineMeters } from "./lib/geo";
 import { latLngToQuadkey } from "./lib/quadkey";
 import type { Spot, SpotInsert } from "./types/spot";
@@ -107,9 +108,10 @@ export default function App() {
   }
 
   async function addSpot(spot: SpotInsert) {
-    const { error } = await supabase.from("spots").insert(spot);
-    if (error) {
-      alert("Failed to save: " + error.message);
+    try {
+      await createSpot(spot);
+    } catch (e) {
+      alert("Failed to save: " + (e as Error).message);
       return;
     }
     await fetchSpots();
