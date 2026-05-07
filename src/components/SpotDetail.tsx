@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import type { Spot } from "../types/spot";
 import { runSpeedTest } from "../lib/speedtest";
 import { getUserLocation, haversineMeters } from "../lib/geo";
-import { submitSpeedtest } from "../lib/api";
+import { submitSpeedtest, deleteSpot } from "../lib/api";
 import { useToast } from "../lib/toast";
+import { useAuth } from "../lib/auth";
 import SpeedHistory from "./SpeedHistory";
+import EditSpotForm from "./EditSpotForm";
 
 interface TileEstimate {
   avg_d_kbps: number;
@@ -65,11 +67,30 @@ const hasSpeedData = (spot: Spot) =>
 
 export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }: Props) {
   const toast = useToast();
+  const { user } = useAuth();
   const [testing, setTesting] = useState(false);
   const [phase, setPhase] = useState("");
   const [estimate, setEstimate] = useState<TileEstimate | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
   const [tooFarMsg, setTooFarMsg] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const isOwner = !!user && !!spot.author_id && user.id === spot.author_id;
+
+  async function handleDelete() {
+    if (!confirm(`Delete "${spot.name}"? This can't be undone.`)) return;
+    setDeleting(true);
+    try {
+      await deleteSpot(spot.id);
+      toast("Spot deleted", "info");
+      onUpdated();
+      onClose();
+    } catch (e) {
+      toast((e as Error).message || "Failed to delete", "error");
+      setDeleting(false);
+    }
+  }
 
   // Check distance on spot change
   useEffect(() => {
@@ -154,6 +175,19 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }
   const estimatedUpload = estimate ? Math.round(estimate.avg_u_kbps / 1000) : null;
   const estimatedPing = estimate ? Math.round(estimate.avg_lat_ms) : null;
 
+  if (editing) {
+    return (
+      <EditSpotForm
+        spot={spot}
+        onSaved={() => {
+          setEditing(false);
+          onUpdated();
+        }}
+        onCancel={() => setEditing(false)}
+      />
+    );
+  }
+
   return (
     <div className="detail-panel">
       <button className="detail-close" onClick={onClose}>✕</button>
@@ -218,6 +252,26 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }
           ? `Last tested: ${formatTestedAt(spot.last_tested_at)}`
           : "Never tested"}
       </p>
+
+      {isOwner && (
+        <div className="owner-actions">
+          <button
+            type="button"
+            className="btn-link"
+            onClick={() => setEditing(true)}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            className="btn-link btn-link-danger"
+            onClick={handleDelete}
+            disabled={deleting}
+          >
+            {deleting ? "Deleting..." : "Delete"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

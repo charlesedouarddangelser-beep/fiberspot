@@ -1222,6 +1222,36 @@ body {
   opacity: 0.6;
 }
 
+/* ---------- Owner actions (edit / delete) ---------- */
+
+.owner-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.btn-link {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.btn-link:hover {
+  color: var(--text);
+}
+.btn-link-danger:hover {
+  color: var(--red);
+}
+.btn-link:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* ---------- Speed history sparkline ---------- */
 
 .speed-history {

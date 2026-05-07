@@ -11,11 +11,15 @@ async function authHeaders(): Promise<Record<string, string>> {
   return token ? { authorization: `Bearer ${token}` } : {};
 }
 
-async function postJson<T>(path: string, body: unknown): Promise<T> {
+async function request<T>(
+  path: string,
+  method: "POST" | "PATCH" | "DELETE",
+  body?: unknown
+): Promise<T> {
   const res = await fetch(path, {
-    method: "POST",
+    method,
     headers: { "content-type": "application/json", ...(await authHeaders()) },
-    body: JSON.stringify(body),
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
   const text = await res.text();
   let data: unknown;
@@ -34,6 +38,10 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   return data as T;
 }
 
+function postJson<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, "POST", body);
+}
+
 export async function createSpot(spot: SpotInsert): Promise<Spot> {
   const { spot: created } = await postJson<{ spot: Spot }>("/api/spots/create", spot);
   return created;
@@ -49,4 +57,20 @@ export async function submitSpeedtest(args: {
 }): Promise<Spot> {
   const { spot } = await postJson<{ spot: Spot }>("/api/spots/speedtest", args);
   return spot;
+}
+
+export async function updateSpot(
+  id: string,
+  patch: { name?: string; type?: string; address?: string | null; tags?: string[] | null }
+): Promise<Spot> {
+  const { spot } = await request<{ spot: Spot }>(
+    `/api/spots/${encodeURIComponent(id)}`,
+    "PATCH",
+    patch
+  );
+  return spot;
+}
+
+export async function deleteSpot(id: string): Promise<void> {
+  await request<{ ok: true }>(`/api/spots/${encodeURIComponent(id)}`, "DELETE");
 }

@@ -9,8 +9,9 @@ export interface Spot {
   avg_upload: number | null;
   avg_ping: number | null;
   tags: string[] | null;
+  author_id: string | null;
   created_at: string;
   last_tested_at: string | null;
 }
 
-export type SpotInsert = Omit<Spot, "id" | "created_at" | "last_tested_at">;
+export type SpotInsert = Omit<Spot, "id" | "created_at" | "last_tested_at" | "author_id">;
