@@ -86,6 +86,60 @@ export default function App() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
+  // ---- Deep-link URL routing for /spot/:id ----
+  // Two pieces:
+  // 1. On mount + on browser back/forward, read the URL and load the
+  //    matching spot if any.
+  // 2. Whenever `selected` changes, push the matching URL — but only if
+  //    it actually differs from the current location (so loading from
+  //    /spot/:id doesn't immediately push a duplicate entry).
+  useEffect(() => {
+    const matchSpotPath = (path: string) => {
+      const m = path.match(/^\/spot\/([\w-]{10,100})$/);
+      return m ? m[1] : null;
+    };
+
+    const loadSpotFromPath = async (path: string) => {
+      const id = matchSpotPath(path);
+      if (!id) {
+        setSelected(null);
+        return;
+      }
+      const { data, error } = await supabase
+        .from("spots")
+        .select("*")
+        .eq("id", id)
+        .single();
+      if (error || !data) {
+        // Bad URL — quietly send the user back to root.
+        window.history.replaceState({}, "", "/");
+        setSelected(null);
+        return;
+      }
+      const spot = data as Spot;
+      setSelected(spot);
+      setSelectedOsmPoi(null);
+      setShowForm(false);
+      setNoSpotPrompt(null);
+      setSidebarOpen(false);
+      setCenter([spot.lng, spot.lat]);
+      setZoom(15);
+    };
+
+    loadSpotFromPath(window.location.pathname);
+
+    const onPop = () => loadSpotFromPath(window.location.pathname);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  useEffect(() => {
+    const path = selected ? `/spot/${selected.id}` : "/";
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, "", path);
+    }
+  }, [selected]);
+
   async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
     try {
       const token = import.meta.env.VITE_MAPBOX_TOKEN;
