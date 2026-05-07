@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   suggestPlaces,
   retrievePlace,
+  inferTypeFromCategories,
   type PlaceFeature,
   type PlaceSuggestion,
 } from "../lib/mapbox-search";
@@ -83,6 +84,19 @@ export default function PlacesAutocomplete({
       sessionToken: sessionTokenRef.current,
     });
     if (feature) {
+      // The /retrieve response sometimes omits full_address for POIs
+      // that are well-known by name but light on metadata (venues,
+      // landmarks). The suggestion's place_formatted / full_address are
+      // always populated, so prefer those when retrieve came back blank.
+      if (!feature.full_address) {
+        feature.full_address = s.place_formatted || s.full_address || "";
+      }
+      // Same for category-based type inference: suggestion carries
+      // poi_category_ids reliably; retrieve sometimes drops them.
+      if (feature.inferred_type === "Other" && s.poi_category_ids?.length) {
+        feature.poi_category_ids = s.poi_category_ids;
+        feature.inferred_type = inferTypeFromCategories(s.poi_category_ids);
+      }
       onPick(feature);
       // Start a fresh session for the next search.
       sessionTokenRef.current = crypto.randomUUID();
