@@ -17,13 +17,25 @@
 
 
 -- ---------------------------------------------------------------------
--- 1. Add author_id to spots
+-- 1. Ensure base tables exist
 --
--- Used by edge functions to attach ownership when an authenticated user
--- creates a spot. Legacy spots stay NULL → no one owns them, so future
--- "edit my spot" / "delete my spot" features won't apply to them.
+-- `spots` is created by initial setup (see schema.sql). `speed_tiles`
+-- is referenced by the app but may not be populated yet — create the
+-- table if missing so the policies below can attach to it.
 -- ---------------------------------------------------------------------
 
+create table if not exists speed_tiles (
+  quadkey     text primary key,
+  avg_d_kbps  float not null,
+  avg_u_kbps  float not null,
+  avg_lat_ms  float not null,
+  tests       int  not null,
+  devices     int  not null
+);
+
+-- Add author_id to spots. Used by edge functions to attach ownership
+-- when an authenticated user creates a spot. Legacy spots stay NULL →
+-- no one owns them, so future "edit my spot" features won't apply.
 alter table spots
   add column if not exists author_id uuid references auth.users(id) on delete set null;
 
