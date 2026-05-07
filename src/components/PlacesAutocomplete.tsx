@@ -32,9 +32,22 @@ export default function PlacesAutocomplete({
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const abortRef = useRef<AbortController | null>(null);
+  // Latest proximity, kept out of the effect's dep array — userLocation
+  // ticks every few seconds via watchPosition and would otherwise re-run
+  // the suggest call (and re-open the dropdown) constantly.
+  const proximityRef = useRef(proximity);
+  proximityRef.current = proximity;
+  // Set to true right before we programmatically change `value` (i.e.
+  // after the user picks a suggestion) so the resulting effect run
+  // doesn't immediately refetch and re-open the dropdown.
+  const skipNextRef = useRef(false);
 
   // Debounced suggest as the user types
   useEffect(() => {
+    if (skipNextRef.current) {
+      skipNextRef.current = false;
+      return;
+    }
     if (value.trim().length < 2) {
       setSuggestions([]);
       return;
@@ -48,7 +61,7 @@ export default function PlacesAutocomplete({
       suggestPlaces({
         query: value,
         sessionToken: sessionTokenRef.current,
-        proximity,
+        proximity: proximityRef.current,
         signal: ac.signal,
       })
         .then((s) => {
@@ -62,7 +75,7 @@ export default function PlacesAutocomplete({
         });
     }, 250);
     return () => clearTimeout(debounceRef.current);
-  }, [value, proximity]);
+  }, [value]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -78,6 +91,9 @@ export default function PlacesAutocomplete({
   async function handlePick(s: PlaceSuggestion) {
     setOpen(false);
     setSuggestions([]);
+    // Mark the upcoming value change as a programmatic pick so the
+    // suggest effect skips this round and doesn't reopen the dropdown.
+    skipNextRef.current = true;
     onChange(s.name);
     const feature = await retrievePlace({
       mapbox_id: s.mapbox_id,
