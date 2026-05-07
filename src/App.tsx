@@ -5,6 +5,7 @@ import SpotDetail from "./components/SpotDetail";
 import AddSpotForm from "./components/AddSpotForm";
 import OsmPoiDetail from "./components/OsmPoiDetail";
 import DonateModal from "./components/DonateModal";
+import AuthControl from "./components/AuthControl";
 import { supabase } from "./lib/supabase";
 import { createSpot } from "./lib/api";
 import { useToast } from "./lib/toast";
@@ -250,6 +251,7 @@ export default function App() {
         <button className="mobile-toggle" onClick={() => setSidebarOpen((v) => !v)}>
           {sidebarOpen ? "✕" : "☰"} Spots
         </button>
+        <AuthControl />
         <DonateModal />
       </main>
       {selected && !showForm && !selectedOsmPoi && (
