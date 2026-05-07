@@ -190,6 +190,32 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }
   }
 
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`;
+  const shareUrl = `${window.location.origin}/spot/${spot.id}`;
+
+  async function handleShare() {
+    const shareData = {
+      title: `${spot.name} on Fiberspot`,
+      text: spot.avg_download !== null
+        ? `${spot.name} — ${Math.round(spot.avg_download)} Mbps download on Fiberspot`
+        : `${spot.name} on Fiberspot`,
+      url: shareUrl,
+    };
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (e) {
+        // User cancelled the share sheet — silent.
+        if ((e as Error).name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast("Link copied", "success");
+    } catch {
+      toast("Could not copy link", "error");
+    }
+  }
 
   return (
     <div className="detail-panel">
@@ -197,14 +223,23 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }
       <h2>{spot.name}</h2>
       <span className="spot-type">{typeIcon(spot.type)} {spot.type}</span>
       {spot.address && <p className="detail-address">{spot.address}</p>}
-      <a
-        href={directionsUrl}
-        target="_blank"
-        rel="noreferrer"
-        className="get-directions"
-      >
-        Get directions →
-      </a>
+      <div className="detail-quick-actions">
+        <a
+          href={directionsUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="get-directions"
+        >
+          Get directions →
+        </a>
+        <button
+          type="button"
+          className="get-directions"
+          onClick={handleShare}
+        >
+          Share ↗
+        </button>
+      </div>
 
       {distance !== null && (
         <div className={`proximity-badge ${isClose ? "close" : "far"}`}>

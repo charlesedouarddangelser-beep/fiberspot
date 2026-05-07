@@ -167,6 +167,13 @@ export default function Sidebar({
         ))}
       </div>
 
+      <div className="speed-legend" aria-hidden>
+        <span className="speed-legend-item"><span className="legend-dot" style={{ background: "#22c55e" }} /> ≥50</span>
+        <span className="speed-legend-item"><span className="legend-dot" style={{ background: "#f59e0b" }} /> 20–49</span>
+        <span className="speed-legend-item"><span className="legend-dot" style={{ background: "#ef4444" }} /> &lt;20 Mbps</span>
+        <span className="speed-legend-item"><span className="legend-dot" style={{ background: "#e4e4e7" }} /> untested</span>
+      </div>
+
       <div className="spot-list">
         {filtered.length === 0 && (
           <p className="empty">
