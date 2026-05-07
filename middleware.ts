@@ -14,10 +14,16 @@ export default function middleware(req: Request) {
   if (!match) return next();
 
   const ua = req.headers.get("user-agent") ?? "";
-  if (!BOT_UA_RE.test(ua)) return next();
+  if (BOT_UA_RE.test(ua)) {
+    // Bot scrape — rewrite to the OG-only HTML function. URL stays the
+    // same in the share preview footer; the bot just gets a leaner page
+    // with the right meta tags.
+    return rewrite(new URL(`/api/og?id=${match[1]}`, req.url));
+  }
 
-  // Bot scrape — rewrite to the OG-only HTML function. URL stays the
-  // same in the share preview footer; the bot just gets a leaner page
-  // with the right meta tags.
-  return rewrite(new URL(`/api/og?id=${match[1]}`, req.url));
+  // Browser hit — Vercel's Vite preset would normally rewrite unknown
+  // paths to /index.html for SPA routing, but middleware short-circuits
+  // that fallback. Do the rewrite ourselves so the SPA can read the URL
+  // from window.location.
+  return rewrite(new URL("/index.html", req.url));
 }
