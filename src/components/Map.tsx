@@ -197,28 +197,59 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
         },
       });
 
-      // ---- Click handlers ----
-      map.on("click", "spots-circles", (e) => {
-        if (!e.features || e.features.length === 0) return;
-        const props = e.features[0].properties!;
-        const spot = spotsRef.current.find((s) => s.id === props.id);
-        if (spot) onSelectSpotRef.current(spot);
-      });
+      // ---- Click / tap with a 16px hit buffer ----
+      // The visible circles are 4–9px in radius, way below a finger-
+      // friendly target. Querying within a buffer around the tap point
+      // and picking the closest feature lets users hit pins that are
+      // visually near where they tap, even on tightly-packed clusters.
+      const HIT_BUFFER_PX = 16;
 
-      map.on("click", "osm-pois-circles", (e) => {
-        if (!e.features || e.features.length === 0) return;
-        const props = e.features[0].properties!;
-        const poi: OsmPoi = {
-          id: props.id,
-          lat: props.lat,
-          lng: props.lng,
-          name: props.name || null,
-          type: props.type,
-          address: props.address || null,
-          openingHours: props.openingHours || null,
-          tags: {},
-        };
-        onSelectOsmPoiRef.current(poi);
+      const featuresNear = (point: { x: number; y: number }) =>
+        map.queryRenderedFeatures(
+          [
+            [point.x - HIT_BUFFER_PX, point.y - HIT_BUFFER_PX],
+            [point.x + HIT_BUFFER_PX, point.y + HIT_BUFFER_PX],
+          ],
+          { layers: ["spots-circles", "osm-pois-circles"] }
+        );
+
+      map.on("click", (e) => {
+        const features = featuresNear(e.point);
+        if (features.length === 0) return;
+
+        // Pick the closest one in screen space.
+        let best = features[0];
+        let bestDist = Infinity;
+        for (const f of features) {
+          if (f.geometry.type !== "Point") continue;
+          const [lng, lat] = f.geometry.coordinates as [number, number];
+          const p = map.project([lng, lat]);
+          const dx = p.x - e.point.x;
+          const dy = p.y - e.point.y;
+          const d = dx * dx + dy * dy;
+          if (d < bestDist) {
+            bestDist = d;
+            best = f;
+          }
+        }
+
+        const props = best.properties!;
+        if (best.layer?.id === "spots-circles") {
+          const spot = spotsRef.current.find((s) => s.id === props.id);
+          if (spot) onSelectSpotRef.current(spot);
+        } else if (best.layer?.id === "osm-pois-circles") {
+          const poi: OsmPoi = {
+            id: props.id,
+            lat: props.lat,
+            lng: props.lng,
+            name: props.name || null,
+            type: props.type,
+            address: props.address || null,
+            openingHours: props.openingHours || null,
+            tags: {},
+          };
+          onSelectOsmPoiRef.current(poi);
+        }
       });
 
       // Cursor pointer on hover for both layers
@@ -251,10 +282,7 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
       map.on("touchstart", (e) => {
         // Skip multi-touch (pinch zoom) and presses on existing markers.
         if (e.originalEvent.touches.length !== 1) return;
-        const features = map.queryRenderedFeatures(e.point, {
-          layers: ["spots-circles", "osm-pois-circles"],
-        });
-        if (features.length > 0) return;
+        if (featuresNear(e.point).length > 0) return;
         const lngLat = e.lngLat;
         pressStart = { x: e.point.x, y: e.point.y };
         pressTimer = setTimeout(() => {
@@ -279,10 +307,7 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
 
       map.on("contextmenu", (e) => {
         e.preventDefault();
-        const features = map.queryRenderedFeatures(e.point, {
-          layers: ["spots-circles", "osm-pois-circles"],
-        });
-        if (features.length > 0) return;
+        if (featuresNear(e.point).length > 0) return;
         onLongPressRef.current(e.lngLat.lng, e.lngLat.lat);
       });
     });
