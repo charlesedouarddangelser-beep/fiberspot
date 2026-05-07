@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" -X POST \"https://overpass-api.de/api/interpreter\" -d 'data=[out:json][timeout:5];node[\"\"amenity\"\"=\"\"cafe\"\"]\\(40.74,-73.99,40.76,-73.97\\);out body 5;')",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}
