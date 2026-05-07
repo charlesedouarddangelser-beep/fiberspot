@@ -1,4 +1,5 @@
 import type { OsmPoi } from "../types/osm";
+import { typeIcon } from "../lib/spot-icons";
 
 interface Props {
   poi: OsmPoi;
@@ -8,13 +9,14 @@ interface Props {
 
 export default function OsmPoiDetail({ poi, onClose, onAdd }: Props) {
   const displayName = poi.name || `Unnamed ${poi.type}`;
+  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${poi.lat},${poi.lng}`;
 
   return (
     <div className="detail-panel osm-detail-panel">
       <div className="detail-header">
         <div>
           <h2>{displayName}</h2>
-          <span className="spot-type osm-type-badge">{poi.type}</span>
+          <span className="spot-type osm-type-badge">{typeIcon(poi.type)} {poi.type}</span>
         </div>
         <button className="close-btn" onClick={onClose}>✕</button>
       </div>
@@ -22,6 +24,15 @@ export default function OsmPoiDetail({ poi, onClose, onAdd }: Props) {
       {poi.address && (
         <p className="osm-address">{poi.address}</p>
       )}
+
+      <a
+        href={directionsUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="get-directions"
+      >
+        Get directions →
+      </a>
 
       {poi.openingHours && (
         <p className="osm-hours">

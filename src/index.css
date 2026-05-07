@@ -1297,6 +1297,26 @@ body {
   color: var(--green);
 }
 
+.form-sub-hint {
+  margin: 6px 2px 0;
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+.get-directions {
+  display: inline-block;
+  margin: 4px 0 12px;
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+.get-directions:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
 /* ---------- OSM POI cards in the sidebar list ---------- */
 .osm-card {
   border-style: dashed;

@@ -7,6 +7,7 @@ import { useToast } from "../lib/toast";
 import { useAuth } from "../lib/auth";
 import SpeedHistory from "./SpeedHistory";
 import EditSpotForm from "./EditSpotForm";
+import { typeIcon } from "../lib/spot-icons";
 
 interface TileEstimate {
   avg_d_kbps: number;
@@ -188,12 +189,22 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }
     );
   }
 
+  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`;
+
   return (
     <div className="detail-panel">
       <button className="detail-close" onClick={onClose}>✕</button>
       <h2>{spot.name}</h2>
-      <span className="spot-type">{spot.type}</span>
+      <span className="spot-type">{typeIcon(spot.type)} {spot.type}</span>
       {spot.address && <p className="detail-address">{spot.address}</p>}
+      <a
+        href={directionsUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="get-directions"
+      >
+        Get directions →
+      </a>
 
       {distance !== null && (
         <div className={`proximity-badge ${isClose ? "close" : "far"}`}>

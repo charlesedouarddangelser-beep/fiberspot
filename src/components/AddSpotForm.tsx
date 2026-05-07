@@ -155,8 +155,13 @@ export default function AddSpotForm({
 
         <div className="form-row">
           <button type="button" className="btn-secondary" onClick={handleSpeedTest} disabled={testing}>
-            {testing ? "Testing..." : speed !== null ? `⚡ ↓${speed.download} ↑${speed.upload} ${speed.ping}ms` : "Run Speed Test"}
+            {testing
+              ? "Testing..."
+              : speed !== null
+                ? `⚡ ↓${speed.download} ↑${speed.upload} ${speed.ping}ms`
+                : "Run a speed test (optional)"}
           </button>
+          <p className="form-sub-hint">You can also test from the spot detail later.</p>
         </div>
 
         <button type="submit" className="btn-primary full" disabled={submitting}>

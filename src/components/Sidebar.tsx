@@ -3,6 +3,7 @@ import type { Spot } from "../types/spot";
 import type { OsmPoi } from "../types/osm";
 import { haversineMeters } from "../lib/geo";
 import GeocodingSearch from "./GeocodingSearch";
+import { typeIcon } from "../lib/spot-icons";
 
 const TYPES = ["All", "Cafe", "Library", "Coworking", "Hotel", "Restaurant", "Park", "Other"];
 const NEAR_ME_RADIUS = 500; // meters
@@ -189,7 +190,7 @@ export default function Sidebar({
                   <span className="spot-dist">{formatDist(it.dist)}</span>
                 )}
               </div>
-              <span className="spot-type">{it.spot.type}</span>
+              <span className="spot-type">{typeIcon(it.spot.type)} {it.spot.type}</span>
               {it.spot.avg_download !== null ? (
                 <span className="spot-speed-row">
                   <span className="spot-speed-item dl">↓{it.spot.avg_download}</span>
@@ -213,7 +214,7 @@ export default function Sidebar({
                   <span className="spot-dist">{formatDist(it.dist)}</span>
                 )}
               </div>
-              <span className="spot-type">{it.poi.type}</span>
+              <span className="spot-type">{typeIcon(it.poi.type)} {it.poi.type}</span>
               <span className="spot-speed osm-hint">+ Tap to add &amp; test</span>
             </div>
           )
