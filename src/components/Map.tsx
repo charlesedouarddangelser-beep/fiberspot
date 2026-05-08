@@ -401,11 +401,21 @@ export default function Map({ spots, center, zoom, userLocation, typeFilter, sel
     if (src) src.setData(spotsGeoJson());
   }, [spots, spotsGeoJson]);
 
-  // Fly to center when it changes
+  // Fly to center when it changes. On mobile, when a spot is selected
+  // the bottom sheet covers ~75% of the screen — pad the bottom so the
+  // visual centre lands above the sheet, where the user can actually
+  // see the pulsing marker.
   useEffect(() => {
     if (!mapRef.current) return;
-    mapRef.current.flyTo({ center, zoom, duration: 1500 });
-  }, [center, zoom]);
+    const isMobile =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 600px)").matches;
+    const padding =
+      isMobile && selectedSpotId
+        ? { top: 0, bottom: Math.round(window.innerHeight * 0.6), left: 0, right: 0 }
+        : undefined;
+    mapRef.current.flyTo({ center, zoom, duration: 1500, padding });
+  }, [center, zoom, selectedSpotId]);
 
   // Pulse-ring on the currently-selected spot, so the side panel and
   // the dot on the map are visually linked.
