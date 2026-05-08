@@ -14,6 +14,7 @@ export default function WifiQrScanner({ onScan, onClose }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [foundNonWifi, setFoundNonWifi] = useState(false);
+  const [streaming, setStreaming] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -24,13 +25,28 @@ export default function WifiQrScanner({ onScan, onClose }: Props) {
       const { default: jsQR } = await import("jsqr");
       if (cancelled) return;
 
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setError("This browser doesn't expose the camera. Try Safari or Chrome.");
+        return;
+      }
+
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: "environment" } },
           audio: false,
         });
-      } catch {
-        if (!cancelled) setError("Camera access was denied or unavailable.");
+      } catch (err) {
+        if (cancelled) return;
+        const e = err as DOMException;
+        if (e.name === "NotAllowedError" || e.name === "PermissionDeniedError") {
+          setError("Camera access was denied. Allow it in your browser settings to scan a QR.");
+        } else if (e.name === "NotFoundError" || e.name === "DevicesNotFoundError") {
+          setError("No camera found on this device.");
+        } else if (e.name === "NotReadableError") {
+          setError("The camera is in use by another app.");
+        } else {
+          setError(`Camera error: ${e.name || e.message || "unknown"}.`);
+        }
         return;
       }
 
@@ -42,11 +58,14 @@ export default function WifiQrScanner({ onScan, onClose }: Props) {
       const video = videoRef.current;
       if (!video) return;
       video.srcObject = stream;
-      try {
-        await video.play();
-      } catch {
-        // Some browsers throw on autoplay if element isn't visible.
-      }
+      // Some browsers (esp. iOS Brave) refuse the play() promise when
+      // the element only just got its srcObject. Don't await it — the
+      // autoPlay attribute on the element handles the same kick, and
+      // the tick() loop waits for HAVE_ENOUGH_DATA before drawing.
+      video.play().catch(() => {});
+
+      const onLoaded = () => setStreaming(true);
+      video.addEventListener("loadeddata", onLoaded, { once: true });
 
       const tick = () => {
         if (cancelled) return;
@@ -104,8 +123,12 @@ export default function WifiQrScanner({ onScan, onClose }: Props) {
             ref={videoRef}
             playsInline
             muted
+            autoPlay
             className="qr-scanner-video"
           />
+          {!streaming && (
+            <div className="qr-scanner-loading">Starting camera…</div>
+          )}
           <div className="qr-scanner-frame" aria-hidden />
           <div className="qr-scanner-hint">
             {foundNonWifi
