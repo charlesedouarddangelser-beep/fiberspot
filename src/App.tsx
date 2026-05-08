@@ -57,6 +57,7 @@ export default function App() {
   const [osmPois, setOsmPois] = useState<OsmPoi[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [typeFilter, setTypeFilter] = useState("All");
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [tileCache, setTileCache] = useState<Record<string, TileEstimate>>({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [noSpotPrompt, setNoSpotPrompt] = useState<{
@@ -386,6 +387,8 @@ export default function App() {
           onSelectOsmPoi={handleSelectOsmPoi}
           typeFilter={typeFilter}
           onTypeFilterChange={setTypeFilter}
+          tagFilter={tagFilter}
+          onTagFilterChange={setTagFilter}
           onAddNew={handleAddNew}
           onFlyTo={(c) => { setCenter(c); setZoom(13); }}
           onSearchSelect={handleSearchSelect}
@@ -443,6 +446,10 @@ export default function App() {
             }
           }}
           getTileEstimate={getTileEstimate}
+          onTagClick={(tag) => {
+            setTagFilter(tag);
+            setSidebarOpen(true);
+          }}
         />
       )}
       {selectedOsmPoi && !showForm && (

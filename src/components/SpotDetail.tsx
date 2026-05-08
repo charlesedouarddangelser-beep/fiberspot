@@ -41,6 +41,7 @@ interface Props {
   onClose: () => void;
   onUpdated: () => void;
   getTileEstimate: (spot: Spot) => Promise<TileEstimate | null>;
+  onTagClick?: (tag: string) => void;
 }
 
 const MAX_DISTANCE = 200; // meters
@@ -87,7 +88,7 @@ function Bar({ label, value, max, unit, color, estimated }: {
 const hasSpeedData = (spot: Spot) =>
   spot.avg_download !== null || spot.avg_upload !== null || spot.avg_ping !== null;
 
-export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }: Props) {
+export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate, onTagClick }: Props) {
   const toast = useToast();
   const { user } = useAuth();
   const [testing, setTesting] = useState(false);
@@ -375,9 +376,23 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }
 
       {spot.tags && spot.tags.length > 0 && (
         <div className="detail-tags">
-          {spot.tags.map((tag) => (
-            <span key={tag} className="tag">{tag}</span>
-          ))}
+          {spot.tags.map((tag) =>
+            onTagClick ? (
+              <button
+                key={tag}
+                type="button"
+                className="tag tag-clickable"
+                onClick={() => {
+                  onTagClick(tag);
+                  onClose();
+                }}
+              >
+                #{tag}
+              </button>
+            ) : (
+              <span key={tag} className="tag">#{tag}</span>
+            )
+          )}
         </div>
       )}
 

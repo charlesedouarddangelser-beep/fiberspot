@@ -38,6 +38,8 @@ interface Props {
   userLocation: [number, number] | null;
   typeFilter: string;
   onTypeFilterChange: (next: string) => void;
+  tagFilter: string | null;
+  onTagFilterChange: (next: string | null) => void;
   onSelect: (spot: Spot) => void;
   onSelectOsmPoi: (poi: OsmPoi) => void;
   onAddNew: () => void;
@@ -77,6 +79,8 @@ export default function Sidebar({
   userLocation,
   typeFilter,
   onTypeFilterChange,
+  tagFilter,
+  onTagFilterChange,
   onSelect,
   onSelectOsmPoi,
   onAddNew,
@@ -153,6 +157,13 @@ export default function Sidebar({
       });
     }
 
+    if (tagFilter) {
+      list = list.filter((it) => {
+        if (it.kind !== "spot") return false;  // OSM POIs don't have tags
+        return it.spot.tags?.includes(tagFilter) ?? false;
+      });
+    }
+
     if (nearMe && userLocation) {
       list = list.filter((it) => it.dist !== null && it.dist <= NEAR_ME_RADIUS);
     }
@@ -164,7 +175,7 @@ export default function Sidebar({
     }
 
     return list;
-  }, [items, nameFilter, typeFilter, nearMe, userLocation]);
+  }, [items, nameFilter, typeFilter, tagFilter, nearMe, userLocation]);
 
   return (
     <aside className="sidebar">
@@ -176,7 +187,7 @@ export default function Sidebar({
 
       <GeocodingSearch onSelect={(c, name) => onSearchSelect(c, name)} userLocation={userLocation} />
 
-      <div className="filter-row hide-mobile">
+      <div className="filter-row">
         <input
           className="name-filter"
           type="text"
@@ -184,6 +195,16 @@ export default function Sidebar({
           value={nameFilter}
           onChange={(e) => setNameFilter(e.target.value)}
         />
+        {nameFilter && (
+          <button
+            type="button"
+            className="name-filter-clear"
+            onClick={() => setNameFilter("")}
+            aria-label="Clear filter"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       <div className="near-me-row">
@@ -215,6 +236,15 @@ export default function Sidebar({
         ))}
       </div>
 
+      {tagFilter && (
+        <div className="active-tag-filter">
+          <span>Filtering by tag</span>
+          <button type="button" className="active-tag-chip" onClick={() => onTagFilterChange(null)}>
+            #{tagFilter} ✕
+          </button>
+        </div>
+      )}
+
       <div className="speed-legend" aria-hidden>
         <span className="speed-legend-item"><span className="legend-dot" style={{ background: "#22c55e" }} /> ≥50</span>
         <span className="speed-legend-item"><span className="legend-dot" style={{ background: "#f59e0b" }} /> 20–49</span>
@@ -224,9 +254,28 @@ export default function Sidebar({
 
       <div className="spot-list">
         {filtered.length === 0 && (
-          <p className="empty">
-            {nearMe ? "No spots within 500m — try moving closer or pan the map" : "No spots found"}
-          </p>
+          <div className="empty">
+            {nameFilter ? (
+              <>
+                <p>No spot matches “{nameFilter}”.</p>
+                <button type="button" className="btn-link" onClick={() => setNameFilter("")}>Clear filter</button>
+              </>
+            ) : nearMe ? (
+              <>
+                <p>No spots within 500m yet.</p>
+                <p className="empty-hint">Long-press the map to drop a pin and add one.</p>
+              </>
+            ) : typeFilter !== "All" ? (
+              <p>No {typeFilter.toLowerCase()} in this area yet — long-press the map to add one.</p>
+            ) : userLocation ? (
+              <>
+                <p>No spots tested here yet.</p>
+                <p className="empty-hint">Be the first — long-press the map to drop a pin.</p>
+              </>
+            ) : (
+              <p>Loading spots near you…</p>
+            )}
+          </div>
         )}
         {filtered.map((it) =>
           it.kind === "spot" ? (
