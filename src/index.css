@@ -1569,19 +1569,39 @@ body {
   letter-spacing: 0.02em;
 }
 
-/* ---------- Selected-spot pulse marker on the map ---------- */
+/* ---------- Selected-spot highlight on the map ---------- */
+/* Two layers in one element:
+   - ::before is the always-visible inner ring + white glow so the
+     selection stays readable mid-animation
+   - ::after is the radiating ring that loops outward */
 .selected-pulse {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: rgba(99, 102, 241, 0.25);
-  border: 2px solid var(--accent);
+  position: relative;
+  width: 36px;
+  height: 36px;
   pointer-events: none;
+}
+.selected-pulse::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.4),
+    0 0 14px rgba(255, 255, 255, 0.65);
+}
+.selected-pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
   animation: selected-pulse-anim 1.6s ease-out infinite;
 }
 @keyframes selected-pulse-anim {
-  0%   { transform: scale(0.7); opacity: 1; }
-  100% { transform: scale(2.0); opacity: 0; }
+  0%   { transform: scale(1);   opacity: 0.9; }
+  100% { transform: scale(2.2); opacity: 0;   }
 }
 
 /* ---------- Speed test progress (SpotDetail) ---------- */
