@@ -18,6 +18,8 @@ interface Props {
   spots: Spot[];
   osmPois: OsmPoi[];
   userLocation: [number, number] | null;
+  typeFilter: string;
+  onTypeFilterChange: (next: string) => void;
   onSelect: (spot: Spot) => void;
   onSelectOsmPoi: (poi: OsmPoi) => void;
   onAddNew: () => void;
@@ -41,6 +43,8 @@ export default function Sidebar({
   spots,
   osmPois,
   userLocation,
+  typeFilter,
+  onTypeFilterChange,
   onSelect,
   onSelectOsmPoi,
   onAddNew,
@@ -49,7 +53,6 @@ export default function Sidebar({
 }: Props) {
   void _onFlyTo;
   const [nameFilter, setNameFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState("All");
   const [nearMe, setNearMe] = useState(false);
 
   // Build a unified list: user-spots always; OSM POIs only when we have
@@ -160,7 +163,7 @@ export default function Sidebar({
           <button
             key={t}
             className={`filter-chip ${typeFilter === t ? "active" : ""}`}
-            onClick={() => setTypeFilter(t)}
+            onClick={() => onTypeFilterChange(t)}
           >
             {t}
           </button>

@@ -30,6 +30,7 @@ export default function App() {
   const [selectedOsmPoi, setSelectedOsmPoi] = useState<OsmPoi | null>(null);
   const [osmPois, setOsmPois] = useState<OsmPoi[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [typeFilter, setTypeFilter] = useState("All");
   const [tileCache, setTileCache] = useState<Record<string, TileEstimate>>({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [noSpotPrompt, setNoSpotPrompt] = useState<{
@@ -332,6 +333,8 @@ export default function App() {
           userLocation={userLocation}
           onSelect={handleSelectSpot}
           onSelectOsmPoi={handleSelectOsmPoi}
+          typeFilter={typeFilter}
+          onTypeFilterChange={setTypeFilter}
           onAddNew={handleAddNew}
           onFlyTo={(c) => { setCenter(c); setZoom(13); }}
           onSearchSelect={handleSearchSelect}
@@ -358,6 +361,7 @@ export default function App() {
           }}
           onLongPress={handleMapLongPress}
           onOsmPoisChange={setOsmPois}
+          typeFilter={typeFilter}
         />
         <button className="mobile-toggle" onClick={() => setSidebarOpen((v) => !v)}>
           {sidebarOpen ? "✕" : "☰"} Spots

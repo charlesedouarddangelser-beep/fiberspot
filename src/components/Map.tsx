@@ -12,6 +12,7 @@ interface Props {
   center: [number, number];
   zoom: number;
   userLocation: [number, number] | null;
+  typeFilter: string;
   onSelectSpot: (spot: Spot) => void;
   onSelectOsmPoi: (poi: OsmPoi) => void;
   onRecenter: () => void;
@@ -19,7 +20,7 @@ interface Props {
   onOsmPoisChange?: (pois: OsmPoi[]) => void;
 }
 
-export default function Map({ spots, center, zoom, userLocation, onSelectSpot, onSelectOsmPoi, onRecenter, onLongPress, onOsmPoisChange }: Props) {
+export default function Map({ spots, center, zoom, userLocation, typeFilter, onSelectSpot, onSelectOsmPoi, onRecenter, onLongPress, onOsmPoisChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
@@ -42,28 +43,32 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
   const spotsRef = useRef(spots);
   spotsRef.current = spots;
 
-  // Convert osmPois to GeoJSON
+  // Convert osmPois to GeoJSON (respects the active type filter)
   const osmGeoJson = useCallback((): GeoJSON.FeatureCollection => ({
     type: "FeatureCollection",
-    features: osmPois.map((poi) => ({
-      type: "Feature" as const,
-      geometry: { type: "Point" as const, coordinates: [poi.lng, poi.lat] },
-      properties: {
-        id: poi.id,
-        name: poi.name || `${poi.type}`,
-        type: poi.type,
-        address: poi.address,
-        openingHours: poi.openingHours,
-        lat: poi.lat,
-        lng: poi.lng,
-      },
-    })),
-  }), [osmPois]);
+    features: osmPois
+      .filter((poi) => typeFilter === "All" || poi.type === typeFilter)
+      .map((poi) => ({
+        type: "Feature" as const,
+        geometry: { type: "Point" as const, coordinates: [poi.lng, poi.lat] },
+        properties: {
+          id: poi.id,
+          name: poi.name || `${poi.type}`,
+          type: poi.type,
+          address: poi.address,
+          openingHours: poi.openingHours,
+          lat: poi.lat,
+          lng: poi.lng,
+        },
+      })),
+  }), [osmPois, typeFilter]);
 
-  // Convert FiberSpot spots to GeoJSON
+  // Convert FiberSpot spots to GeoJSON (respects the active type filter)
   const spotsGeoJson = useCallback((): GeoJSON.FeatureCollection => ({
     type: "FeatureCollection",
-    features: spots.map((spot) => {
+    features: spots
+      .filter((s) => typeFilter === "All" || s.type === typeFilter)
+      .map((spot) => {
       const untested = spot.avg_download === null && spot.avg_upload === null && spot.avg_ping === null;
       let color: string;
       if (spot.avg_download === null)      color = "#e4e4e7"; // off-white — untested
@@ -84,7 +89,7 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
         },
       };
     }),
-  }), [spots]);
+  }), [spots, typeFilter]);
 
   const spotsGeoJsonRef = useRef(spotsGeoJson);
   spotsGeoJsonRef.current = spotsGeoJson;
