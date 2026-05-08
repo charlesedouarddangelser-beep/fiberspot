@@ -7,16 +7,15 @@ import { typeIcon } from "../lib/spot-icons";
 
 // Persisted filter state — keyed by version so future incompatible
 // shapes can be invalidated.
-const FILTERS_STORAGE_KEY = "fiberspot.filters.v1";
+const FILTERS_STORAGE_KEY = "fiberspot.filters.v2";
 
-function readPersistedFilters(): { nearMe: boolean; nameFilter: string } | null {
+function readPersistedFilters(): { nearMe: boolean } | null {
   try {
     const raw = localStorage.getItem(FILTERS_STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { nearMe?: unknown; nameFilter?: unknown };
+    const parsed = JSON.parse(raw) as { nearMe?: unknown };
     return {
       nearMe: typeof parsed.nearMe === "boolean" ? parsed.nearMe : false,
-      nameFilter: typeof parsed.nameFilter === "string" ? parsed.nameFilter : "",
     };
   } catch {
     return null;
@@ -89,20 +88,16 @@ export default function Sidebar({
 }: Props) {
   void _onFlyTo;
   const persisted = useMemo(() => readPersistedFilters(), []);
-  const [nameFilter, setNameFilter] = useState<string>(persisted?.nameFilter ?? "");
   const [nearMe, setNearMe] = useState<boolean>(persisted?.nearMe ?? false);
 
   // Persist filters whenever they change.
   useEffect(() => {
     try {
-      localStorage.setItem(
-        FILTERS_STORAGE_KEY,
-        JSON.stringify({ nameFilter, nearMe })
-      );
+      localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify({ nearMe }));
     } catch {
       // ignore quota / disabled storage
     }
-  }, [nameFilter, nearMe]);
+  }, [nearMe]);
 
   // Build a unified list: user-spots always; OSM POIs only when we have
   // a user location (otherwise distance is meaningless and the cap
@@ -142,14 +137,6 @@ export default function Sidebar({
   const filtered = useMemo(() => {
     let list = items;
 
-    if (nameFilter) {
-      const q = nameFilter.toLowerCase();
-      list = list.filter((it) => {
-        const n = it.kind === "spot" ? it.spot.name : (it.poi.name ?? "");
-        return n.toLowerCase().includes(q);
-      });
-    }
-
     if (typeFilter !== "All") {
       list = list.filter((it) => {
         const t = it.kind === "spot" ? it.spot.type : it.poi.type;
@@ -175,7 +162,7 @@ export default function Sidebar({
     }
 
     return list;
-  }, [items, nameFilter, typeFilter, tagFilter, nearMe, userLocation]);
+  }, [items, typeFilter, tagFilter, nearMe, userLocation]);
 
   return (
     <aside className="sidebar">
@@ -187,44 +174,21 @@ export default function Sidebar({
 
       <GeocodingSearch onSelect={(c, name) => onSearchSelect(c, name)} userLocation={userLocation} />
 
-      <div className="filter-row">
-        <input
-          className="name-filter"
-          type="text"
-          placeholder="Filter by name..."
-          value={nameFilter}
-          onChange={(e) => setNameFilter(e.target.value)}
-        />
-        {nameFilter && (
-          <button
-            type="button"
-            className="name-filter-clear"
-            onClick={() => setNameFilter("")}
-            aria-label="Clear filter"
-          >
-            ✕
-          </button>
-        )}
-      </div>
-
-      <div className="near-me-row">
+      <div className="filter-strip" role="toolbar">
         <button
-          className={`near-me-toggle ${nearMe ? "active" : ""}`}
+          type="button"
+          className={`filter-chip filter-chip-near ${nearMe ? "active" : ""}`}
           onClick={() => setNearMe((v) => !v)}
           disabled={!userLocation}
+          title={nearMe ? `Within ${NEAR_ME_RADIUS}m` : "Show only spots near you"}
+          aria-label={nearMe ? "Stop filtering by distance" : "Filter to spots near you"}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <circle cx="12" cy="12" r="3" />
             <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
           </svg>
-          {nearMe ? "Near me" : "All spots"}
         </button>
-        {nearMe && (
-          <span className="near-me-hint">Within {NEAR_ME_RADIUS}m</span>
-        )}
-      </div>
-
-      <div className="type-filters">
+        <span className="filter-strip-divider" aria-hidden />
         {TYPES.map((t) => (
           <button
             key={t}
@@ -245,22 +209,10 @@ export default function Sidebar({
         </div>
       )}
 
-      <div className="speed-legend" aria-hidden>
-        <span className="speed-legend-item"><span className="legend-dot" style={{ background: "#22c55e" }} /> ≥50</span>
-        <span className="speed-legend-item"><span className="legend-dot" style={{ background: "#f59e0b" }} /> 20–49</span>
-        <span className="speed-legend-item"><span className="legend-dot" style={{ background: "#ef4444" }} /> &lt;20 Mbps</span>
-        <span className="speed-legend-item"><span className="legend-dot" style={{ background: "#e4e4e7" }} /> untested</span>
-      </div>
-
       <div className="spot-list">
         {filtered.length === 0 && (
           <div className="empty">
-            {nameFilter ? (
-              <>
-                <p>No spot matches “{nameFilter}”.</p>
-                <button type="button" className="btn-link" onClick={() => setNameFilter("")}>Clear filter</button>
-              </>
-            ) : nearMe ? (
+            {nearMe ? (
               <>
                 <p>No spots within 500m yet.</p>
                 <p className="empty-hint">Long-press the map to drop a pin and add one.</p>

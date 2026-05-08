@@ -1647,30 +1647,50 @@ body {
   margin-left: 4px;
 }
 
-/* ---------- Sidebar empty / filter helpers ---------- */
+/* ---------- Sidebar empty state hint ---------- */
 .empty-hint {
   margin-top: 6px;
   font-size: 12px;
   color: var(--text-dim);
   line-height: 1.4;
 }
-.name-filter-clear {
-  position: absolute;
-  right: 28px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: transparent;
-  border: none;
-  color: var(--text-dim);
-  cursor: pointer;
-  font-size: 14px;
-  padding: 4px 8px;
+
+/* ---------- Filter strip — single horizontal scrollable row ---------- */
+.filter-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px 4px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
-.name-filter-clear:hover {
-  color: var(--text);
+.filter-strip::-webkit-scrollbar {
+  display: none;
 }
-.filter-row {
-  position: relative;
+.filter-strip .filter-chip {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+}
+.filter-chip-near {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.filter-chip-near:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.filter-strip-divider {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+  margin: 0 4px;
 }
 
 .active-tag-filter {
