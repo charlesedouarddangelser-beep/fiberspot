@@ -1385,13 +1385,53 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
+.wifi-info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
 .wifi-label {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-dim);
-  margin: 0 0 8px;
+  margin: 0;
+}
+.wifi-qr-toggle {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.wifi-qr-toggle:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.wifi-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.wifi-qr canvas {
+  border-radius: 6px;
+}
+.wifi-qr-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  margin: 0;
+  line-height: 1.4;
 }
 .wifi-row {
   display: flex;

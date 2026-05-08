@@ -7,7 +7,28 @@ import { useToast } from "../lib/toast";
 import { useAuth } from "../lib/auth";
 import SpeedHistory from "./SpeedHistory";
 import EditSpotForm from "./EditSpotForm";
+import WifiQR from "./WifiQR";
 import { typeIcon } from "../lib/spot-icons";
+
+// Pick the best "open directions" URL for the user's platform:
+//   iOS / iPadOS  → Apple Maps app via maps.apple.com
+//   Android       → geo: URL, opens whichever map app the user prefers
+//   everything    → Google Maps web (works on desktop + as a fallback)
+function buildDirectionsUrl(lat: number, lng: number, name: string): string {
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const isIOS =
+    /iPad|iPhone|iPod/.test(ua) ||
+    (typeof navigator !== "undefined" &&
+      navigator.platform === "MacIntel" &&
+      navigator.maxTouchPoints > 1);
+  if (isIOS) {
+    return `https://maps.apple.com/?daddr=${lat},${lng}&q=${encodeURIComponent(name)}`;
+  }
+  if (/Android/.test(ua)) {
+    return `geo:${lat},${lng}?q=${lat},${lng}(${encodeURIComponent(name)})`;
+  }
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+}
 
 interface TileEstimate {
   avg_d_kbps: number;
@@ -76,6 +97,7 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }
   const [tooFarMsg, setTooFarMsg] = useState("");
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showWifiQr, setShowWifiQr] = useState(false);
 
   const isOwner = !!user && !!spot.author_id && user.id === spot.author_id;
 
@@ -189,7 +211,7 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }
     );
   }
 
-  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`;
+  const directionsUrl = buildDirectionsUrl(spot.lat, spot.lng, spot.name);
   const shareUrl = `${window.location.origin}/spot/${spot.id}`;
 
   async function copyToClipboard(value: string, label: string) {
@@ -258,7 +280,18 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }
 
       {(spot.wifi_ssid || spot.wifi_password) && (
         <div className="wifi-info">
-          <p className="wifi-label">Wi-Fi</p>
+          <div className="wifi-info-header">
+            <p className="wifi-label">Wi-Fi</p>
+            {spot.wifi_ssid && (
+              <button
+                type="button"
+                className="wifi-qr-toggle"
+                onClick={() => setShowWifiQr((v) => !v)}
+              >
+                {showWifiQr ? "Hide QR" : "Show QR"}
+              </button>
+            )}
+          </div>
           {spot.wifi_ssid && (
             <div className="wifi-row">
               <span className="wifi-row-key">Network</span>
@@ -286,6 +319,9 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }
                 Copy
               </button>
             </div>
+          )}
+          {showWifiQr && spot.wifi_ssid && (
+            <WifiQR ssid={spot.wifi_ssid} password={spot.wifi_password} />
           )}
         </div>
       )}
