@@ -127,23 +127,45 @@ export default function App() {
 
     if (!navigator.geolocation) return;
 
-    // Get initial position fast, then watch for movement
     let centered = false;
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const loc: [number, number] = [pos.coords.longitude, pos.coords.latitude];
-        setUserLocation(loc);
-        if (!centered) {
-          setCenter(loc);
-          centered = true;
+    const applyPosition = (pos: GeolocationPosition) => {
+      const loc: [number, number] = [pos.coords.longitude, pos.coords.latitude];
+      setUserLocation(loc);
+      if (!centered) {
+        setCenter(loc);
+        setZoom((z) => (z < 12 ? 14 : z));
+        centered = true;
+      }
+    };
+
+    // Two-stage acquisition:
+    //   1. fast low-accuracy fix (cell tower / cached) so the list and
+    //      map snap to "around you" within ~1s.
+    //   2. high-accuracy watch upgrades the position as GPS locks and
+    //      the user moves.
+    navigator.geolocation.getCurrentPosition(
+      applyPosition,
+      (err) => {
+        // Surface a clear cause when permission is denied so the user
+        // understands why distances / nearby sort aren't available.
+        if (err.code === err.PERMISSION_DENIED) {
+          toast(
+            "Location is off — distances and nearby sort won't work. Allow location in your browser to fix.",
+            "info"
+          );
         }
       },
+      { enableHighAccuracy: false, maximumAge: 60_000, timeout: 8000 }
+    );
+
+    const watchId = navigator.geolocation.watchPosition(
+      applyPosition,
       () => {},
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, []);
+  }, [toast]);
 
   // ---- Deep-link URL routing for /spot/:id ----
   // Two pieces:
