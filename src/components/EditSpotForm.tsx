@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Spot } from "../types/spot";
 import { updateSpot } from "../lib/api";
 import { useToast } from "../lib/toast";
+import WifiQrScanner from "./WifiQrScanner";
 
 const TYPES = ["Cafe", "Library", "Coworking", "Hotel", "Restaurant", "Park", "Other"];
 
@@ -19,6 +20,7 @@ export default function EditSpotForm({ spot, onSaved, onCancel }: Props) {
   const [tags, setTags] = useState(spot.tags?.join(", ") ?? "");
   const [wifiSsid, setWifiSsid] = useState(spot.wifi_ssid ?? "");
   const [wifiPassword, setWifiPassword] = useState(spot.wifi_password ?? "");
+  const [scanningWifi, setScanningWifi] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -83,6 +85,14 @@ export default function EditSpotForm({ spot, onSaved, onCancel }: Props) {
           />
         </label>
 
+        <button
+          type="button"
+          className="wifi-scan-btn"
+          onClick={() => setScanningWifi(true)}
+        >
+          📷 Scan Wi-Fi QR code
+        </button>
+
         <label>
           Wi-Fi network <span className="form-optional">(optional)</span>
           <input
@@ -112,6 +122,18 @@ export default function EditSpotForm({ spot, onSaved, onCancel }: Props) {
           {submitting ? "Saving..." : "Save changes"}
         </button>
       </form>
+
+      {scanningWifi && (
+        <WifiQrScanner
+          onScan={({ ssid, password }) => {
+            setWifiSsid(ssid);
+            setWifiPassword(password ?? "");
+            setScanningWifi(false);
+            toast("Wi-Fi QR detected", "success");
+          }}
+          onClose={() => setScanningWifi(false)}
+        />
+      )}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { runSpeedTest as runFullSpeedTest } from "../lib/speedtest";
 import type { SpeedResult } from "../lib/speedtest";
 import { useToast } from "../lib/toast";
 import PlacesAutocomplete from "./PlacesAutocomplete";
+import WifiQrScanner from "./WifiQrScanner";
 import type { PlaceFeature } from "../lib/mapbox-search";
 
 const TYPES = ["Cafe", "Library", "Coworking", "Hotel", "Restaurant", "Park", "Other"];
@@ -37,6 +38,7 @@ export default function AddSpotForm({
   const [tags, setTags] = useState("");
   const [wifiSsid, setWifiSsid] = useState("");
   const [wifiPassword, setWifiPassword] = useState("");
+  const [scanningWifi, setScanningWifi] = useState(false);
   const [lat, setLat] = useState<number | null>(initialLat ?? null);
   const [lng, setLng] = useState<number | null>(initialLng ?? null);
   const [pickedFromSearch, setPickedFromSearch] = useState(initialLat != null && initialLng != null);
@@ -149,6 +151,14 @@ export default function AddSpotForm({
           <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="quiet, power outlets" />
         </label>
 
+        <button
+          type="button"
+          className="wifi-scan-btn"
+          onClick={() => setScanningWifi(true)}
+        >
+          📷 Scan Wi-Fi QR code
+        </button>
+
         <label>
           Wi-Fi network <span className="form-optional">(optional)</span>
           <input
@@ -197,6 +207,18 @@ export default function AddSpotForm({
           {submitting ? "Saving..." : "Save Spot"}
         </button>
       </form>
+
+      {scanningWifi && (
+        <WifiQrScanner
+          onScan={({ ssid, password }) => {
+            setWifiSsid(ssid);
+            setWifiPassword(password ?? "");
+            setScanningWifi(false);
+            toast("Wi-Fi QR detected", "success");
+          }}
+          onClose={() => setScanningWifi(false)}
+        />
+      )}
     </div>
   );
 }

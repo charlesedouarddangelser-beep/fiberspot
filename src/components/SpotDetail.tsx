@@ -8,6 +8,7 @@ import { useAuth } from "../lib/auth";
 import SpeedHistory from "./SpeedHistory";
 import EditSpotForm from "./EditSpotForm";
 import WifiQR from "./WifiQR";
+import WifiQrScanner from "./WifiQrScanner";
 import { typeIcon } from "../lib/spot-icons";
 
 // Pick the best "open directions" URL for the user's platform:
@@ -103,6 +104,7 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate, 
   const [wifiSsidDraft, setWifiSsidDraft] = useState(spot.wifi_ssid ?? "");
   const [wifiPasswordDraft, setWifiPasswordDraft] = useState(spot.wifi_password ?? "");
   const [savingWifi, setSavingWifi] = useState(false);
+  const [scanningWifi, setScanningWifi] = useState(false);
 
   // Reset Wi-Fi drafts whenever the displayed spot changes (e.g. user
   // navigates to a different spot from the list).
@@ -317,6 +319,13 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate, 
         <div className="wifi-info">
           <p className="wifi-label">Wi-Fi</p>
           <div className="wifi-edit">
+            <button
+              type="button"
+              className="wifi-scan-btn"
+              onClick={() => setScanningWifi(true)}
+            >
+              📷 Scan Wi-Fi QR code
+            </button>
             <input
               type="text"
               className="wifi-edit-input"
@@ -351,6 +360,17 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate, 
               </button>
             </div>
           </div>
+          {scanningWifi && (
+            <WifiQrScanner
+              onScan={({ ssid, password }) => {
+                setWifiSsidDraft(ssid);
+                setWifiPasswordDraft(password ?? "");
+                setScanningWifi(false);
+                toast("Wi-Fi QR detected", "success");
+              }}
+              onClose={() => setScanningWifi(false)}
+            />
+          )}
         </div>
       ) : spot.wifi_ssid || spot.wifi_password ? (
         <div className="wifi-info">
