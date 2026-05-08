@@ -29,7 +29,12 @@ interface CreateBody {
   avg_upload?: unknown;
   avg_ping?: unknown;
   tags?: unknown;
+  wifi_ssid?: unknown;
+  wifi_password?: unknown;
 }
+
+const WIFI_SSID_MAX = 64;       // 32-byte SSID + UTF-8 buffer
+const WIFI_PASSWORD_MAX = 128;  // WPA passphrase max is 63, gives slack
 
 function isFiniteNumber(v: unknown): v is number {
   return typeof v === "number" && Number.isFinite(v);
@@ -78,6 +83,15 @@ export default async function handler(req: Request) {
       return fail("Invalid tag");
   }
 
+  if (body.wifi_ssid != null) {
+    if (typeof body.wifi_ssid !== "string" || body.wifi_ssid.length > WIFI_SSID_MAX)
+      return fail("Invalid wifi_ssid");
+  }
+  if (body.wifi_password != null) {
+    if (typeof body.wifi_password !== "string" || body.wifi_password.length > WIFI_PASSWORD_MAX)
+      return fail("Invalid wifi_password");
+  }
+
   const user = await getUserFromRequest(req);
   const ip = getClientIP(req);
 
@@ -104,6 +118,12 @@ export default async function handler(req: Request) {
       lat: body.lat,
       lng: body.lng,
       tags: (body.tags as string[] | null | undefined) ?? null,
+      wifi_ssid: typeof body.wifi_ssid === "string" && body.wifi_ssid.trim().length > 0
+        ? body.wifi_ssid.trim()
+        : null,
+      wifi_password: typeof body.wifi_password === "string" && body.wifi_password.length > 0
+        ? body.wifi_password
+        : null,
       author_id: user?.id ?? null,
     })
     .select()

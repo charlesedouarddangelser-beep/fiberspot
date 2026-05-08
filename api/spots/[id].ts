@@ -19,7 +19,12 @@ interface PatchBody {
   type?: unknown;
   address?: unknown;
   tags?: unknown;
+  wifi_ssid?: unknown;
+  wifi_password?: unknown;
 }
+
+const WIFI_SSID_MAX = 64;
+const WIFI_PASSWORD_MAX = 128;
 
 function extractId(req: Request): string | null {
   // /api/spots/<id> — path looks like "/api/spots/<id>"
@@ -95,6 +100,26 @@ export default async function handler(req: Request) {
       update.tags = body.tags;
     } else {
       return fail("Invalid tags");
+    }
+  }
+
+  if (body.wifi_ssid !== undefined) {
+    if (body.wifi_ssid === null || (typeof body.wifi_ssid === "string" && body.wifi_ssid.trim().length === 0)) {
+      update.wifi_ssid = null;
+    } else if (typeof body.wifi_ssid === "string" && body.wifi_ssid.length <= WIFI_SSID_MAX) {
+      update.wifi_ssid = body.wifi_ssid.trim();
+    } else {
+      return fail("Invalid wifi_ssid");
+    }
+  }
+
+  if (body.wifi_password !== undefined) {
+    if (body.wifi_password === null || (typeof body.wifi_password === "string" && body.wifi_password.length === 0)) {
+      update.wifi_password = null;
+    } else if (typeof body.wifi_password === "string" && body.wifi_password.length <= WIFI_PASSWORD_MAX) {
+      update.wifi_password = body.wifi_password;
+    } else {
+      return fail("Invalid wifi_password");
     }
   }
 

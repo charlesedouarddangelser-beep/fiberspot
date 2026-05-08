@@ -17,6 +17,8 @@ export default function EditSpotForm({ spot, onSaved, onCancel }: Props) {
   const [type, setType] = useState(spot.type);
   const [address, setAddress] = useState(spot.address ?? "");
   const [tags, setTags] = useState(spot.tags?.join(", ") ?? "");
+  const [wifiSsid, setWifiSsid] = useState(spot.wifi_ssid ?? "");
+  const [wifiPassword, setWifiPassword] = useState(spot.wifi_password ?? "");
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -30,6 +32,8 @@ export default function EditSpotForm({ spot, onSaved, onCancel }: Props) {
         tags: tags.trim()
           ? tags.split(",").map((t) => t.trim()).filter(Boolean)
           : null,
+        wifi_ssid: wifiSsid.trim() || null,
+        wifi_password: wifiPassword || null,
       });
       toast("Spot updated", "success");
       onSaved(updated);
@@ -76,6 +80,31 @@ export default function EditSpotForm({ spot, onSaved, onCancel }: Props) {
             value={tags}
             onChange={(e) => setTags(e.target.value)}
             placeholder="quiet, power outlets"
+          />
+        </label>
+
+        <label>
+          Wi-Fi network <span className="form-optional">(optional)</span>
+          <input
+            value={wifiSsid}
+            onChange={(e) => setWifiSsid(e.target.value)}
+            placeholder="MyCafé-WiFi"
+            autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
+          />
+        </label>
+
+        <label>
+          Wi-Fi password <span className="form-optional">(optional)</span>
+          <input
+            type="text"
+            value={wifiPassword}
+            onChange={(e) => setWifiPassword(e.target.value)}
+            placeholder="(only if it's publicly shared)"
+            autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
           />
         </label>
 

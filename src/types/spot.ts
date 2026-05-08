@@ -9,6 +9,8 @@ export interface Spot {
   avg_upload: number | null;
   avg_ping: number | null;
   tags: string[] | null;
+  wifi_ssid: string | null;
+  wifi_password: string | null;
   author_id: string | null;
   created_at: string;
   last_tested_at: string | null;

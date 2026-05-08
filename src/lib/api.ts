@@ -61,7 +61,14 @@ export async function submitSpeedtest(args: {
 
 export async function updateSpot(
   id: string,
-  patch: { name?: string; type?: string; address?: string | null; tags?: string[] | null }
+  patch: {
+    name?: string;
+    type?: string;
+    address?: string | null;
+    tags?: string[] | null;
+    wifi_ssid?: string | null;
+    wifi_password?: string | null;
+  }
 ): Promise<Spot> {
   const { spot } = await request<{ spot: Spot }>(
     `/api/spots/${encodeURIComponent(id)}`,

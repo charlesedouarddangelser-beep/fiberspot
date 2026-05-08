@@ -1377,6 +1377,74 @@ body {
   opacity: 0.85;
 }
 
+/* ---------- Wi-Fi info block (SpotDetail) ---------- */
+.wifi-info {
+  margin: 14px 0;
+  padding: 12px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.wifi-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin: 0 0 8px;
+}
+.wifi-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+.wifi-row:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+.wifi-row-key {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--text-dim);
+  min-width: 60px;
+}
+.wifi-row-value {
+  flex: 1 1 auto;
+  font-family: ui-monospace, SF Mono, Menlo, monospace;
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+.wifi-copy {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.wifi-copy:hover, .wifi-copy:active {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* Optional-field marker in form labels */
+.form-optional {
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-left: 4px;
+}
+
 /* ---------- Map loading skeleton (Suspense fallback) ---------- */
 .map-skeleton {
   width: 100%;

@@ -35,6 +35,8 @@ export default function AddSpotForm({
   const [type, setType] = useState(initialType ?? "Cafe");
   const [address, setAddress] = useState(initialAddress ?? "");
   const [tags, setTags] = useState("");
+  const [wifiSsid, setWifiSsid] = useState("");
+  const [wifiPassword, setWifiPassword] = useState("");
   const [lat, setLat] = useState<number | null>(initialLat ?? null);
   const [lng, setLng] = useState<number | null>(initialLng ?? null);
   const [pickedFromSearch, setPickedFromSearch] = useState(initialLat != null && initialLng != null);
@@ -102,6 +104,8 @@ export default function AddSpotForm({
       avg_upload: speed?.upload ?? null,
       avg_ping: speed?.ping ?? null,
       tags: tags ? tags.split(",").map((t) => t.trim()) : null,
+      wifi_ssid: wifiSsid.trim() || null,
+      wifi_password: wifiPassword || null,
     });
     setSubmitting(false);
   }
@@ -143,6 +147,31 @@ export default function AddSpotForm({
         <label>
           Tags (comma-separated)
           <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="quiet, power outlets" />
+        </label>
+
+        <label>
+          Wi-Fi network <span className="form-optional">(optional)</span>
+          <input
+            value={wifiSsid}
+            onChange={(e) => setWifiSsid(e.target.value)}
+            placeholder="MyCafé-WiFi"
+            autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
+          />
+        </label>
+
+        <label>
+          Wi-Fi password <span className="form-optional">(optional)</span>
+          <input
+            type="text"
+            value={wifiPassword}
+            onChange={(e) => setWifiPassword(e.target.value)}
+            placeholder="(only if it's publicly shared)"
+            autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
+          />
         </label>
 
         {!pickedFromSearch && (

@@ -192,6 +192,15 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`;
   const shareUrl = `${window.location.origin}/spot/${spot.id}`;
 
+  async function copyToClipboard(value: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast(`${label} copied`, "success");
+    } catch {
+      toast(`Could not copy ${label.toLowerCase()}`, "error");
+    }
+  }
+
   async function handleShare() {
     const shareData = {
       title: `${spot.name} on Fiberspot`,
@@ -244,6 +253,40 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }
       {distance !== null && (
         <div className={`proximity-badge ${isClose ? "close" : "far"}`}>
           {isClose ? "✓" : "⚠"} You are {formatDistance(distance)}
+        </div>
+      )}
+
+      {(spot.wifi_ssid || spot.wifi_password) && (
+        <div className="wifi-info">
+          <p className="wifi-label">Wi-Fi</p>
+          {spot.wifi_ssid && (
+            <div className="wifi-row">
+              <span className="wifi-row-key">Network</span>
+              <code className="wifi-row-value">{spot.wifi_ssid}</code>
+              <button
+                type="button"
+                className="wifi-copy"
+                onClick={() => copyToClipboard(spot.wifi_ssid!, "SSID")}
+                aria-label="Copy SSID"
+              >
+                Copy
+              </button>
+            </div>
+          )}
+          {spot.wifi_password && (
+            <div className="wifi-row">
+              <span className="wifi-row-key">Password</span>
+              <code className="wifi-row-value">{spot.wifi_password}</code>
+              <button
+                type="button"
+                className="wifi-copy"
+                onClick={() => copyToClipboard(spot.wifi_password!, "Password")}
+                aria-label="Copy password"
+              >
+                Copy
+              </button>
+            </div>
+          )}
         </div>
       )}
 
