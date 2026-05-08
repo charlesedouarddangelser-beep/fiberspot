@@ -1,0 +1,19 @@
+{
+  "name": "Fiberspot",
+  "short_name": "Fiberspot",
+  "description": "Find Wi-Fi spots near you. Test the speed, share what you find.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1117",
+  "theme_color": "#0f1117",
+  "orientation": "portrait",
+  "categories": ["utilities", "travel", "productivity"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    }
+  ]
+}
