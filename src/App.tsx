@@ -70,6 +70,18 @@ export default function App() {
     dragStart.current = null;
   }
 
+  // First-run hint — fired once per device. Tells new users about the
+  // long-press gesture they'd never discover on their own.
+  useEffect(() => {
+    const KEY = "fiberspot.onboarded.v1";
+    if (localStorage.getItem(KEY)) return;
+    const timer = setTimeout(() => {
+      toast("👇 Long-press the map to drop a pin and add a spot", "info");
+      localStorage.setItem(KEY, "1");
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
   useEffect(() => {
     fetchSpots();
 
