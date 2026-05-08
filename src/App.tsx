@@ -1,6 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import Map from "./components/Map";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Sidebar from "./components/Sidebar";
+
+// Mapbox-gl + the Map component pull ~1.5 MB of JS, so we defer them
+// until the rest of the shell is on screen. The Suspense fallback
+// matches the basemap background to avoid a white flash.
+const Map = lazy(() => import("./components/Map"));
 import SpotDetail from "./components/SpotDetail";
 import AddSpotForm from "./components/AddSpotForm";
 import OsmPoiDetail from "./components/OsmPoiDetail";
@@ -389,6 +393,7 @@ export default function App() {
       </div>
       {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
       <main className="map-container">
+        <Suspense fallback={<div className="map-skeleton">Loading map…</div>}>
         <Map
           spots={spots}
           center={center}
@@ -411,6 +416,7 @@ export default function App() {
           typeFilter={typeFilter}
           selectedSpotId={selected?.id ?? null}
         />
+        </Suspense>
         <button className="mobile-toggle" onClick={() => setSidebarOpen((v) => !v)}>
           {sidebarOpen ? "✕" : "☰"} Spots
           {!sidebarOpen && spots.length > 0 && (
