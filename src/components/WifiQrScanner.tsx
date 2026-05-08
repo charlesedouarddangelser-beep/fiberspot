@@ -39,13 +39,13 @@ export default function WifiQrScanner({ onScan, onClose }: Props) {
         if (cancelled) return;
         const e = err as DOMException;
         if (e.name === "NotAllowedError" || e.name === "PermissionDeniedError") {
-          setError("Camera access was denied. Allow it in your browser settings to scan a QR.");
+          setError("Camera access was denied. Allow it in browser settings (and in iOS Settings → Brave → Camera if you're on Brave) to scan a QR.");
         } else if (e.name === "NotFoundError" || e.name === "DevicesNotFoundError") {
           setError("No camera found on this device.");
         } else if (e.name === "NotReadableError") {
           setError("The camera is in use by another app.");
         } else {
-          setError(`Camera error: ${e.name || e.message || "unknown"}.`);
+          setError(`Camera error: ${e.name || e.message || "unknown"}. Try the page in Safari if Brave keeps failing.`);
         }
         return;
       }
@@ -56,16 +56,39 @@ export default function WifiQrScanner({ onScan, onClose }: Props) {
       }
 
       const video = videoRef.current;
-      if (!video) return;
-      video.srcObject = stream;
-      // Some browsers (esp. iOS Brave) refuse the play() promise when
-      // the element only just got its srcObject. Don't await it — the
-      // autoPlay attribute on the element handles the same kick, and
-      // the tick() loop waits for HAVE_ENOUGH_DATA before drawing.
-      video.play().catch(() => {});
+      if (!video) {
+        stream?.getTracks().forEach((t) => t.stop());
+        return;
+      }
 
-      const onLoaded = () => setStreaming(true);
-      video.addEventListener("loadeddata", onLoaded, { once: true });
+      video.srcObject = stream;
+
+      // Wait for the metadata so we know dimensions are valid before
+      // play() — iOS WebKit otherwise sometimes throws "operation not
+      // supported" because it can't size the video element.
+      await new Promise<void>((resolve) => {
+        if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+          resolve();
+          return;
+        }
+        const onMeta = () => {
+          video.removeEventListener("loadedmetadata", onMeta);
+          resolve();
+        };
+        video.addEventListener("loadedmetadata", onMeta);
+      });
+      if (cancelled) return;
+
+      try {
+        await video.play();
+        setStreaming(true);
+      } catch (err) {
+        const e = err as DOMException;
+        setError(
+          `Couldn't start the camera preview (${e.name || "play failed"}). Try Safari, or close and reopen the scanner.`
+        );
+        return;
+      }
 
       const tick = () => {
         if (cancelled) return;
