@@ -19,7 +19,7 @@ const MAX_DOWNLOAD_MBPS = 5000;
 const MAX_UPLOAD_MBPS = 2000;
 const MIN_PING_MS = 1;
 const MAX_PING_MS = 5000;
-const SPEEDTEST_MAX_DISTANCE_M = 200;
+const SPEEDTEST_MAX_DISTANCE_M = 100;
 
 interface CreateBody {
   name?: unknown;
@@ -180,7 +180,8 @@ export default async function handler(req: Request) {
         upload: body.avg_upload,
         ping: body.avg_ping,
         // Record the actual location where the test ran (verified to
-        // be within 200m of the spot above), not the spot itself.
+        // be within SPEEDTEST_MAX_DISTANCE_M of the spot above), not
+        // the spot itself.
         lat: typeof body.test_lat === "number" ? body.test_lat : body.lat,
         lng: typeof body.test_lng === "number" ? body.test_lng : body.lng,
       });

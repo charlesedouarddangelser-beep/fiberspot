@@ -10,7 +10,7 @@ const MAX_DOWNLOAD_MBPS = 5000;
 const MAX_UPLOAD_MBPS = 2000;
 const MIN_PING_MS = 1;
 const MAX_PING_MS = 5000;
-const MAX_DISTANCE_M = 200;
+const MAX_DISTANCE_M = 100;
 
 interface SpeedtestBody {
   spot_id?: unknown;

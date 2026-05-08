@@ -45,7 +45,7 @@ interface Props {
   onTagClick?: (tag: string) => void;
 }
 
-const MAX_DISTANCE = 200; // meters
+const MAX_DISTANCE = 100; // meters
 
 function formatTestedAt(date: string): string {
   const d = new Date(date);

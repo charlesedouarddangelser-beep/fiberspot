@@ -9,7 +9,7 @@ import WifiQrScanner from "./WifiQrScanner";
 import type { PlaceFeature } from "../lib/mapbox-search";
 import { haversineMeters } from "../lib/geo";
 
-const SPEEDTEST_MAX_DISTANCE_M = 200;
+const SPEEDTEST_MAX_DISTANCE_M = 100;
 
 const TYPES = ["Cafe", "Library", "Coworking", "Hotel", "Restaurant", "Park", "Other"];
 
