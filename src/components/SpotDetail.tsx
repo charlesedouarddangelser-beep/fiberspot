@@ -37,10 +37,14 @@ interface TileEstimate {
   avg_lat_ms: number;
 }
 
-interface FiberTile {
-  ftth_locaux: number;
-  total_locaux: number;
-  dominant_operator: string | null;
+interface FiberCommune {
+  insee_com: string;
+  commune_name: string;
+  locaux_total: number | null;
+  locaux_ftth: number | null;
+  taux_deploiement: number | null;
+  operateur_majoritaire: string | null;
+  zonage: string | null;
   updated_at: string;
 }
 
@@ -49,7 +53,7 @@ interface Props {
   onClose: () => void;
   onUpdated: () => void;
   getTileEstimate: (spot: Spot) => Promise<TileEstimate | null>;
-  getFiberTile: (spot: Spot) => Promise<FiberTile | null>;
+  getFiberCommune: (spot: Spot) => Promise<FiberCommune | null>;
   onTagClick?: (tag: string) => void;
 }
 
@@ -97,13 +101,13 @@ function Bar({ label, value, max, unit, color, estimated }: {
 const hasSpeedData = (spot: Spot) =>
   spot.avg_download !== null || spot.avg_upload !== null || spot.avg_ping !== null;
 
-export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate, getFiberTile, onTagClick }: Props) {
+export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate, getFiberCommune, onTagClick }: Props) {
   const toast = useToast();
   const { user } = useAuth();
   const [testing, setTesting] = useState(false);
   const [phase, setPhase] = useState("");
   const [estimate, setEstimate] = useState<TileEstimate | null>(null);
-  const [fiberTile, setFiberTile] = useState<FiberTile | null>(null);
+  const [fiberTile, setFiberTile] = useState<FiberCommune | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
   const [tooFarMsg, setTooFarMsg] = useState("");
   const [editing, setEditing] = useState(false);
@@ -171,7 +175,7 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate, 
     if (!hasSpeedData(spot)) {
       getTileEstimate(spot).then(setEstimate);
     }
-    getFiberTile(spot).then(setFiberTile);
+    getFiberCommune(spot).then(setFiberTile);
 
     getUserLocation()
       .then((pos) => {
@@ -326,8 +330,8 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate, 
         </div>
       )}
 
-      {fiberTile && fiberTile.total_locaux > 0 && (() => {
-        const pct = fiberTile.ftth_locaux / fiberTile.total_locaux;
+      {fiberTile && fiberTile.taux_deploiement !== null && (() => {
+        const pct = fiberTile.taux_deploiement;
         const tier =
           pct >= 0.9 ? "fiber-tier-full" :
           pct >= 0.5 ? "fiber-tier-partial" :
@@ -343,10 +347,14 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate, 
               <span className="fiber-badge-pct">{Math.round(pct * 100)}%</span>
             </div>
             <div className="fiber-badge-meta">
-              {fiberTile.ftth_locaux.toLocaleString()} / {fiberTile.total_locaux.toLocaleString()} locaux raccordables
-              {fiberTile.dominant_operator && ` · ${fiberTile.dominant_operator}`}
+              {fiberTile.commune_name}
+              {fiberTile.locaux_ftth !== null && fiberTile.locaux_total !== null
+                ? ` · ${fiberTile.locaux_ftth.toLocaleString()} / ${fiberTile.locaux_total.toLocaleString()} locaux`
+                : ""}
+              {fiberTile.operateur_majoritaire && ` · ${fiberTile.operateur_majoritaire}`}
+              {fiberTile.zonage && ` · ${fiberTile.zonage}`}
             </div>
-            <div className="fiber-badge-source">Source: Arcep</div>
+            <div className="fiber-badge-source">Source: Arcep · commune {fiberTile.insee_com}</div>
           </div>
         );
       })()}

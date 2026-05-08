@@ -24,10 +24,14 @@ interface TileEstimate {
   avg_lat_ms: number;
 }
 
-interface FiberTile {
-  ftth_locaux: number;
-  total_locaux: number;
-  dominant_operator: string | null;
+interface FiberCommune {
+  insee_com: string;
+  commune_name: string;
+  locaux_total: number | null;
+  locaux_ftth: number | null;
+  taux_deploiement: number | null;       // 0..1
+  operateur_majoritaire: string | null;
+  zonage: string | null;
   updated_at: string;
 }
 
@@ -66,7 +70,7 @@ export default function App() {
   const [typeFilter, setTypeFilter] = useState("All");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [tileCache, setTileCache] = useState<Record<string, TileEstimate>>({});
-  const [fiberCache, setFiberCache] = useState<Record<string, FiberTile | null>>({});
+  const [fiberCache, setFiberCache] = useState<Record<string, FiberCommune | null>>({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [noSpotPrompt, setNoSpotPrompt] = useState<{
     name: string;        // shown as the place line in the prompt
@@ -283,18 +287,40 @@ export default function App() {
     return null;
   }
 
-  // Fetch Arcep FTTH coverage tile (zoom 14) for a spot
-  async function getFiberTile(spot: Spot): Promise<FiberTile | null> {
-    const qk = latLngToQuadkey(spot.lat, spot.lng, 14);
-    if (qk in fiberCache) return fiberCache[qk];
+  // Fetch Arcep FTTH coverage for a spot's commune. We resolve the
+  // INSEE code via the free api-adresse.data.gouv.fr reverse endpoint
+  // (no auth, no quota), then look up the commune row.
+  async function getFiberCommune(spot: Spot): Promise<FiberCommune | null> {
+    const cacheKey = spot.id; // cache per-spot since INSEE is fixed for the lat/lng
+    if (cacheKey in fiberCache) return fiberCache[cacheKey];
+
+    let insee: string | null = null;
+    try {
+      const res = await fetch(
+        `https://api-adresse.data.gouv.fr/reverse/?lon=${spot.lng}&lat=${spot.lat}`
+      );
+      if (res.ok) {
+        const json = (await res.json()) as {
+          features?: Array<{ properties?: { citycode?: string } }>;
+        };
+        insee = json.features?.[0]?.properties?.citycode ?? null;
+      }
+    } catch {
+      // Network failure — give up silently, no fiber badge to show.
+    }
+
+    if (!insee) {
+      setFiberCache((prev) => ({ ...prev, [cacheKey]: null }));
+      return null;
+    }
 
     const { data } = await supabase
-      .from("connectivity_tiles")
-      .select("ftth_locaux, total_locaux, dominant_operator, updated_at")
-      .eq("quadkey", qk)
+      .from("connectivity_communes")
+      .select("insee_com, commune_name, locaux_total, locaux_ftth, taux_deploiement, operateur_majoritaire, zonage, updated_at")
+      .eq("insee_com", insee)
       .maybeSingle();
 
-    setFiberCache((prev) => ({ ...prev, [qk]: data ?? null }));
+    setFiberCache((prev) => ({ ...prev, [cacheKey]: data ?? null }));
     return data ?? null;
   }
 
@@ -497,7 +523,7 @@ export default function App() {
             }
           }}
           getTileEstimate={getTileEstimate}
-          getFiberTile={getFiberTile}
+          getFiberCommune={getFiberCommune}
           onTagClick={(tag) => {
             setTagFilter(tag);
             setSidebarOpen(true);

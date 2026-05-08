@@ -1,31 +1,23 @@
 /**
- * Ingest Arcep FTTH availability into connectivity_tiles.
+ * Ingest Arcep FTTH per-commune coverage into connectivity_communes.
  *
- * Arcep publishes the quarterly "Liste des locaux raccordables au THD
- * fixe" on data.gouv.fr — a per-département CSV listing every address
- * eligible for FTTH plus the deploying operator. We aggregate by
- * quadkey at zoom 14 (~600m × 600m) so each Fiberspot lookup boils
- * down to a single primary-key fetch.
+ * Source: Arcep "Relevé géographique des déploiements FttH"
+ *   https://www.data.gouv.fr/datasets/le-marche-du-haut-et-tres-haut-debit-fixe-deploiements/
+ *
+ * The CSV is ~6.3 MB, ~35k rows (one per French commune), with semicolon
+ * delimiters and French decimals. We parse it with DuckDB, normalise
+ * the numeric columns, and upsert into Supabase via the service-role
+ * key.
  *
  * Usage:
- *   # ingest a single file
- *   npm run import-arcep -- /path/to/file.csv
- *
- *   # ingest a whole directory (e.g. an unzipped quarterly archive)
- *   npm run import-arcep -- /path/to/arcep_q4_2025/
- *
- * Required env vars (in .env):
- *   SUPABASE_URL
- *   SUPABASE_SERVICE_ROLE_KEY
+ *   npm run import-arcep -- /path/to/releve-geographique-donnees-2026-03.csv
  */
 
 import "dotenv/config";
 import { createClient } from "@supabase/supabase-js";
 import duckdb from "duckdb";
-import { readdirSync, statSync } from "node:fs";
-import { resolve, join, extname } from "node:path";
-
-// ---------- Config ----------
+import { resolve } from "node:path";
+import { existsSync, statSync } from "node:fs";
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -39,212 +31,104 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 
 const inputArg = process.argv[2];
 if (!inputArg) {
-  console.error("Usage: npm run import-arcep -- <path-to-csv-or-directory>");
+  console.error("Usage: npm run import-arcep -- <path-to-csv>");
   process.exit(1);
 }
 
 const inputPath = resolve(inputArg);
-let inputStat;
-try {
-  inputStat = statSync(inputPath);
-} catch {
-  console.error(`Path not found: ${inputPath}`);
+if (!existsSync(inputPath) || !statSync(inputPath).isFile()) {
+  console.error(`File not found: ${inputPath}`);
   process.exit(1);
 }
 
-const csvFiles = inputStat.isDirectory()
-  ? readdirSync(inputPath)
-      .filter((f) => extname(f).toLowerCase() === ".csv")
-      .map((f) => join(inputPath, f))
-  : [inputPath];
-
-if (csvFiles.length === 0) {
-  console.error("No CSV files found.");
-  process.exit(1);
-}
-
-console.log(`Ingesting ${csvFiles.length} CSV file(s)`);
-
-// ---------- DuckDB pipeline ----------
-//
-// Arcep CSV columns vary across quarters but typically include:
-//   coord_lat / coord_lon (or latitude / longitude)
-//   statut_immeuble / statut_deploiement / etc.
-//   operateur_immeuble / operateur_principal
-//
-// We let DuckDB sniff the schema, then alias the most common variants
-// in the SELECT below. Add more aliases here as needed.
+console.log(`Reading ${inputPath}…`);
 
 const db = new duckdb.Database(":memory:");
 const conn = db.connect();
-const run = (sql) =>
-  new Promise((resolve, reject) => {
-    conn.exec(sql, (err) => (err ? reject(err) : resolve()));
-  });
 const all = (sql) =>
   new Promise((resolve, reject) => {
     conn.all(sql, (err, rows) => (err ? reject(err) : resolve(rows)));
   });
 
-// ---------- Quadkey z=14 helper ----------
-//
-// Bing tile system. Identical math to the speed_tiles import, just at
-// a coarser zoom (14 instead of 16) so each tile is ~600m wide.
-
-function latLngToQuadkey(lat, lng, zoom) {
-  let qk = "";
-  const sinLat = Math.sin((lat * Math.PI) / 180);
-  const pixelX = ((lng + 180) / 360) * 256 * Math.pow(2, zoom);
-  const pixelY =
-    (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) *
-    256 *
-    Math.pow(2, zoom);
-  const tileX = Math.floor(pixelX / 256);
-  const tileY = Math.floor(pixelY / 256);
-  for (let i = zoom; i > 0; i--) {
-    let digit = 0;
-    const mask = 1 << (i - 1);
-    if ((tileX & mask) !== 0) digit += 1;
-    if ((tileY & mask) !== 0) digit += 2;
-    qk += digit.toString();
-  }
-  return qk;
-}
-
-// ---------- Process ----------
-
-console.log("Reading CSV(s) into DuckDB…");
-const t0 = Date.now();
-
-const fileList = csvFiles.map((f) => `'${f.replace(/'/g, "''")}'`).join(", ");
-
-await run(`
-  CREATE TABLE arcep_raw AS
-  SELECT *
-  FROM read_csv_auto([${fileList}], union_by_name=true, ignore_errors=true);
-`);
-
-const cols = await all(`SELECT column_name FROM information_schema.columns WHERE table_name = 'arcep_raw';`);
-const colNames = cols.map((c) => c.column_name.toLowerCase());
-
-const pickCol = (...candidates) => {
-  for (const c of candidates) {
-    const found = colNames.find((n) => n === c.toLowerCase() || n.includes(c.toLowerCase()));
-    if (found) return found;
-  }
-  return null;
-};
-
-const latCol = pickCol("coord_lat", "latitude", "lat");
-const lngCol = pickCol("coord_lon", "longitude", "lng", "lon");
-const statusCol = pickCol("statut_immeuble", "statut_deploiement", "etat_immeuble", "statut");
-const operatorCol = pickCol("operateur_immeuble", "operateur_principal", "operateur");
-
-if (!latCol || !lngCol) {
-  console.error(`Could not find lat/lng columns in CSV. Available columns:\n${colNames.join(", ")}`);
-  process.exit(1);
-}
-
-console.log(
-  `  lat col   : ${latCol}\n  lng col   : ${lngCol}\n  status col: ${statusCol ?? "(none — assuming all FTTH)"}\n  op col    : ${operatorCol ?? "(none)"}`
-);
-
-// We treat any row whose status looks like "raccordable" / "deployé" /
-// "mis en service" as FTTH-available. The exact wording varies by
-// year, so the LIKE list errs on the inclusive side.
-const ftthExpr = statusCol
-  ? `LOWER(CAST(${statusCol} AS VARCHAR)) IN
-      ('raccordable', 'deployé', 'déployé', 'mis en service', 'service ouvert',
-       'point de mutualisation', 'pm installé')
-     OR LOWER(CAST(${statusCol} AS VARCHAR)) LIKE '%racc%'
-     OR LOWER(CAST(${statusCol} AS VARCHAR)) LIKE '%service%'`
-  : "TRUE";
-
-console.log("Aggregating by quadkey z=14…");
-const rows = await all(`
-  WITH typed AS (
-    SELECT
-      CAST(${latCol} AS DOUBLE) AS lat,
-      CAST(${lngCol} AS DOUBLE) AS lng,
-      ${ftthExpr} AS is_ftth,
-      ${operatorCol ? `CAST(${operatorCol} AS VARCHAR)` : "NULL"} AS op
-    FROM arcep_raw
-    WHERE ${latCol} IS NOT NULL AND ${lngCol} IS NOT NULL
-  )
+// Arcep CSV uses ';' delimiters and ',' decimal separators (French
+// convention). DuckDB handles both with the right options.
+const sql = `
   SELECT
-    lat,
-    lng,
-    is_ftth,
-    op
-  FROM typed;
-`);
+    CAST(INSEE_COM AS VARCHAR)                                    AS insee_com,
+    CAST(commune AS VARCHAR)                                      AS commune_name,
+    CAST(INSEE_DEP AS VARCHAR)                                    AS insee_dep,
+    CAST(INSEE_REG AS VARCHAR)                                    AS insee_reg,
+    TRY_CAST(REPLACE(CAST(locaux_commune AS VARCHAR), ',', '.') AS DOUBLE) AS locaux_total,
+    TRY_CAST(IPE_commune AS INTEGER)                              AS locaux_ftth,
+    TRY_CAST(REPLACE(CAST(taux_depl_commune AS VARCHAR), ',', '.') AS DOUBLE) AS taux_deploiement,
+    NULLIF(CAST(oi_majo AS VARCHAR), 'NA')                        AS operateur_majoritaire,
+    NULLIF(CAST(zonage AS VARCHAR), 'NA')                         AS zonage
+  FROM read_csv_auto(
+    '${inputPath.replace(/'/g, "''")}',
+    delim=';',
+    header=true,
+    ignore_errors=true,
+    union_by_name=true
+  )
+  WHERE INSEE_COM IS NOT NULL;
+`;
 
-console.log(`Got ${rows.length.toLocaleString()} rows from CSV. Bucketing in JS…`);
-
-// Bucket into quadkeys client-side (DuckDB doesn't have a native
-// quadkey function and pulling the math into SQL adds friction).
-const buckets = new Map();
-for (const r of rows) {
-  if (!Number.isFinite(r.lat) || !Number.isFinite(r.lng)) continue;
-  const qk = latLngToQuadkey(r.lat, r.lng, 14);
-  let b = buckets.get(qk);
-  if (!b) {
-    b = { ftth: 0, total: 0, opCounts: new Map() };
-    buckets.set(qk, b);
-  }
-  b.total += 1;
-  if (r.is_ftth) b.ftth += 1;
-  if (r.op) {
-    b.opCounts.set(r.op, (b.opCounts.get(r.op) ?? 0) + 1);
-  }
-}
-
-const tiles = [];
-for (const [qk, b] of buckets) {
-  let dominant = null;
-  let maxCount = 0;
-  for (const [op, count] of b.opCounts) {
-    if (count > maxCount) {
-      dominant = op;
-      maxCount = count;
-    }
-  }
-  tiles.push({
-    quadkey: qk,
-    ftth_locaux: b.ftth,
-    total_locaux: b.total,
-    dominant_operator: dominant,
-  });
-}
-
+const t0 = Date.now();
+const rows = await all(sql);
 console.log(
-  `Aggregated into ${tiles.length.toLocaleString()} tiles in ${((Date.now() - t0) / 1000).toFixed(1)}s.`
+  `Parsed ${rows.length.toLocaleString()} communes in ${((Date.now() - t0) / 1000).toFixed(1)}s.`
 );
 
-// ---------- Insert ----------
+if (rows.length === 0) {
+  console.log("Nothing to insert. Check the CSV format.");
+  process.exit(0);
+}
+
+// Round locaux_total down — Arcep occasionally reports as decimals
+// (rare, but the CSV uses scientific notation like 1,26362000000000e+05).
+const cleaned = rows.map((r) => ({
+  insee_com: r.insee_com,
+  commune_name: r.commune_name,
+  insee_dep: r.insee_dep,
+  insee_reg: r.insee_reg,
+  locaux_total:
+    typeof r.locaux_total === "number" && Number.isFinite(r.locaux_total)
+      ? Math.round(r.locaux_total)
+      : null,
+  locaux_ftth:
+    typeof r.locaux_ftth === "number" && Number.isFinite(r.locaux_ftth)
+      ? r.locaux_ftth
+      : null,
+  taux_deploiement:
+    typeof r.taux_deploiement === "number" && Number.isFinite(r.taux_deploiement)
+      ? r.taux_deploiement
+      : null,
+  operateur_majoritaire: r.operateur_majoritaire,
+  zonage: r.zonage,
+}));
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-const BATCH = 5000;
+const BATCH = 1000;
 let inserted = 0;
 const t1 = Date.now();
 
-for (let i = 0; i < tiles.length; i += BATCH) {
-  const chunk = tiles.slice(i, i + BATCH);
+for (let i = 0; i < cleaned.length; i += BATCH) {
+  const chunk = cleaned.slice(i, i + BATCH);
   const { error } = await supabase
-    .from("connectivity_tiles")
-    .upsert(chunk, { onConflict: "quadkey" });
+    .from("connectivity_communes")
+    .upsert(chunk, { onConflict: "insee_com" });
   if (error) {
     console.error(`\nBatch ${i}-${i + chunk.length} failed:`, error);
     process.exit(1);
   }
   inserted += chunk.length;
-  process.stdout.write(`\rInserted ${inserted.toLocaleString()} / ${tiles.length.toLocaleString()}`);
+  process.stdout.write(`\rInserted ${inserted.toLocaleString()} / ${cleaned.length.toLocaleString()}`);
 }
 
 console.log(
-  `\n✅ Done in ${((Date.now() - t1) / 1000).toFixed(1)}s. Each spot now has a fibre baseline available via connectivity_tiles.`
+  `\n✅ Done in ${((Date.now() - t1) / 1000).toFixed(1)}s. Spots in France can now show their commune's FTTH coverage.`
 );
 process.exit(0);
