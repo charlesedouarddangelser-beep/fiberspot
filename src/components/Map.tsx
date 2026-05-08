@@ -13,6 +13,7 @@ interface Props {
   zoom: number;
   userLocation: [number, number] | null;
   typeFilter: string;
+  selectedSpotId: string | null;
   onSelectSpot: (spot: Spot) => void;
   onSelectOsmPoi: (poi: OsmPoi) => void;
   onRecenter: () => void;
@@ -20,10 +21,11 @@ interface Props {
   onOsmPoisChange?: (pois: OsmPoi[]) => void;
 }
 
-export default function Map({ spots, center, zoom, userLocation, typeFilter, onSelectSpot, onSelectOsmPoi, onRecenter, onLongPress, onOsmPoisChange }: Props) {
+export default function Map({ spots, center, zoom, userLocation, typeFilter, selectedSpotId, onSelectSpot, onSelectOsmPoi, onRecenter, onLongPress, onOsmPoisChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const selectedMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
   const { osmPois } = useOverpassPois(mapRef, spots);
 
@@ -404,6 +406,23 @@ export default function Map({ spots, center, zoom, userLocation, typeFilter, onS
     if (!mapRef.current) return;
     mapRef.current.flyTo({ center, zoom, duration: 1500 });
   }, [center, zoom]);
+
+  // Pulse-ring on the currently-selected spot, so the side panel and
+  // the dot on the map are visually linked.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    selectedMarkerRef.current?.remove();
+    selectedMarkerRef.current = null;
+    if (!selectedSpotId) return;
+    const spot = spots.find((s) => s.id === selectedSpotId);
+    if (!spot) return;
+    const el = document.createElement("div");
+    el.className = "selected-pulse";
+    selectedMarkerRef.current = new mapboxgl.Marker({ element: el })
+      .setLngLat([spot.lng, spot.lat])
+      .addTo(map);
+  }, [selectedSpotId, spots]);
 
   // User location blue dot
   useEffect(() => {

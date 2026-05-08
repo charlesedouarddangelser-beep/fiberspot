@@ -1377,6 +1377,21 @@ body {
   opacity: 0.85;
 }
 
+/* ---------- Selected-spot pulse marker on the map ---------- */
+.selected-pulse {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.25);
+  border: 2px solid var(--accent);
+  pointer-events: none;
+  animation: selected-pulse-anim 1.6s ease-out infinite;
+}
+@keyframes selected-pulse-anim {
+  0%   { transform: scale(0.7); opacity: 1; }
+  100% { transform: scale(2.0); opacity: 0; }
+}
+
 /* ---------- Speed test progress (SpotDetail) ---------- */
 .speed-test-progress {
   display: flex;

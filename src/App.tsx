@@ -409,6 +409,7 @@ export default function App() {
           onLongPress={handleMapLongPress}
           onOsmPoisChange={setOsmPois}
           typeFilter={typeFilter}
+          selectedSpotId={selected?.id ?? null}
         />
         <button className="mobile-toggle" onClick={() => setSidebarOpen((v) => !v)}>
           {sidebarOpen ? "✕" : "☰"} Spots
