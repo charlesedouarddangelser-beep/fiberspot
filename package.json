@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "import-ookla": "node scripts/ingest-ookla.mjs"
+    "import-ookla": "node scripts/ingest-ookla.mjs",
+    "import-arcep": "node scripts/ingest-arcep.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.3",

@@ -1387,6 +1387,51 @@ body {
   opacity: 0.85;
 }
 
+/* ---------- Fiber availability badge (Arcep, SpotDetail) ---------- */
+.fiber-badge {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  background: var(--surface2);
+}
+.fiber-tier-full    { border-left-color: var(--green); }
+.fiber-tier-partial { border-left-color: var(--orange); }
+.fiber-tier-low     { border-left-color: var(--red); }
+
+.fiber-badge-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.fiber-badge-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.fiber-badge-pct {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.fiber-badge-meta {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+.fiber-badge-source {
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--text-dim);
+  opacity: 0.6;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 /* ---------- Wi-Fi info block (SpotDetail) ---------- */
 .wifi-info {
   margin: 14px 0;

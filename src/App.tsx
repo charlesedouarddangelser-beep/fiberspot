@@ -24,6 +24,13 @@ interface TileEstimate {
   avg_lat_ms: number;
 }
 
+interface FiberTile {
+  ftth_locaux: number;
+  total_locaux: number;
+  dominant_operator: string | null;
+  updated_at: string;
+}
+
 export default function App() {
   const toast = useToast();
   const [spots, setSpots] = useState<Spot[]>([]);
@@ -59,6 +66,7 @@ export default function App() {
   const [typeFilter, setTypeFilter] = useState("All");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [tileCache, setTileCache] = useState<Record<string, TileEstimate>>({});
+  const [fiberCache, setFiberCache] = useState<Record<string, FiberTile | null>>({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [noSpotPrompt, setNoSpotPrompt] = useState<{
     name: string;        // shown as the place line in the prompt
@@ -275,6 +283,21 @@ export default function App() {
     return null;
   }
 
+  // Fetch Arcep FTTH coverage tile (zoom 14) for a spot
+  async function getFiberTile(spot: Spot): Promise<FiberTile | null> {
+    const qk = latLngToQuadkey(spot.lat, spot.lng, 14);
+    if (qk in fiberCache) return fiberCache[qk];
+
+    const { data } = await supabase
+      .from("connectivity_tiles")
+      .select("ftth_locaux, total_locaux, dominant_operator, updated_at")
+      .eq("quadkey", qk)
+      .maybeSingle();
+
+    setFiberCache((prev) => ({ ...prev, [qk]: data ?? null }));
+    return data ?? null;
+  }
+
   const handleAddNew = useCallback(async () => {
     setSelected(null);
     setSelectedOsmPoi(null);
@@ -474,6 +497,7 @@ export default function App() {
             }
           }}
           getTileEstimate={getTileEstimate}
+          getFiberTile={getFiberTile}
           onTagClick={(tag) => {
             setTagFilter(tag);
             setSidebarOpen(true);
