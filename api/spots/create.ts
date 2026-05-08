@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "../_lib/supabase";
 import { getUserFromRequest } from "../_lib/auth";
 import { checkRateLimit, getClientIP } from "../_lib/ratelimit";
+import { haversineMeters } from "../_lib/geo";
 import { fail, json } from "../_lib/json";
 
 export const config = { runtime: "edge" };
@@ -18,6 +19,7 @@ const MAX_DOWNLOAD_MBPS = 5000;
 const MAX_UPLOAD_MBPS = 2000;
 const MIN_PING_MS = 1;
 const MAX_PING_MS = 5000;
+const SPEEDTEST_MAX_DISTANCE_M = 200;
 
 interface CreateBody {
   name?: unknown;
@@ -31,6 +33,11 @@ interface CreateBody {
   tags?: unknown;
   wifi_ssid?: unknown;
   wifi_password?: unknown;
+  // User's lat/lng at the moment they ran the initial speedtest.
+  // Required when avg_download is present so we can verify the test
+  // wasn't run hundreds of metres away from the spot.
+  test_lat?: unknown;
+  test_lng?: unknown;
 }
 
 const WIFI_SSID_MAX = 64;       // 32-byte SSID + UTF-8 buffer
@@ -92,6 +99,28 @@ export default async function handler(req: Request) {
       return fail("Invalid wifi_password");
   }
 
+  // If the request bundles an initial speedtest, the user must have run
+  // it physically at the spot. Reject creates that try to attach a test
+  // taken hundreds of metres away — the data would be misleading.
+  const hasInitialTest =
+    typeof body.avg_download === "number" &&
+    typeof body.avg_upload === "number" &&
+    typeof body.avg_ping === "number";
+
+  if (hasInitialTest) {
+    if (!isFiniteNumber(body.test_lat) || body.test_lat < -90 || body.test_lat > 90)
+      return fail("Speedtest requires test_lat");
+    if (!isFiniteNumber(body.test_lng) || body.test_lng < -180 || body.test_lng > 180)
+      return fail("Speedtest requires test_lng");
+    const dist = haversineMeters(body.test_lat, body.test_lng, body.lat, body.lng);
+    if (dist > SPEEDTEST_MAX_DISTANCE_M) {
+      return fail(
+        `Speedtest must be run at the spot (you were ${Math.round(dist)}m away, max ${SPEEDTEST_MAX_DISTANCE_M}m)`,
+        403
+      );
+    }
+  }
+
   const user = await getUserFromRequest(req);
   const ip = getClientIP(req);
 
@@ -150,8 +179,10 @@ export default async function handler(req: Request) {
         download: body.avg_download,
         upload: body.avg_upload,
         ping: body.avg_ping,
-        lat: body.lat,
-        lng: body.lng,
+        // Record the actual location where the test ran (verified to
+        // be within 200m of the spot above), not the spot itself.
+        lat: typeof body.test_lat === "number" ? body.test_lat : body.lat,
+        lng: typeof body.test_lng === "number" ? body.test_lng : body.lng,
       });
 
     if (testErr) {

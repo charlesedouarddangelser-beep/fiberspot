@@ -7,6 +7,9 @@ import { useToast } from "../lib/toast";
 import PlacesAutocomplete from "./PlacesAutocomplete";
 import WifiQrScanner from "./WifiQrScanner";
 import type { PlaceFeature } from "../lib/mapbox-search";
+import { haversineMeters } from "../lib/geo";
+
+const SPEEDTEST_MAX_DISTANCE_M = 200;
 
 const TYPES = ["Cafe", "Library", "Coworking", "Hotel", "Restaurant", "Park", "Other"];
 
@@ -39,6 +42,10 @@ export default function AddSpotForm({
   const [wifiSsid, setWifiSsid] = useState("");
   const [wifiPassword, setWifiPassword] = useState("");
   const [scanningWifi, setScanningWifi] = useState(false);
+  // The user's actual position at the moment they ran the initial
+  // speedtest. Sent to the server alongside the test so it can refuse
+  // creates where the user wasn't physically at the spot.
+  const [testPos, setTestPos] = useState<{ lat: number; lng: number } | null>(null);
   const [lat, setLat] = useState<number | null>(initialLat ?? null);
   const [lng, setLng] = useState<number | null>(initialLng ?? null);
   const [pickedFromSearch, setPickedFromSearch] = useState(initialLat != null && initialLng != null);
@@ -79,10 +86,27 @@ export default function AddSpotForm({
   }
 
   async function handleSpeedTest() {
+    if (lat === null || lng === null) {
+      toast("Pick a place first — the test needs to know which spot it's for.", "error");
+      return;
+    }
     setTesting(true);
     try {
+      // Same gate as a re-test from the spot detail: you must be at
+      // the spot for the result to be honest about its Wi-Fi.
+      const pos = await getUserLocation();
+      const dist = haversineMeters(pos.lat, pos.lng, lat, lng);
+      if (dist > SPEEDTEST_MAX_DISTANCE_M) {
+        toast(
+          `Move closer — you're ${Math.round(dist)}m from this spot, the test only runs within ${SPEEDTEST_MAX_DISTANCE_M}m.`,
+          "error"
+        );
+        setTesting(false);
+        return;
+      }
       const result = await runFullSpeedTest();
       setSpeed(result);
+      setTestPos({ lat: pos.lat, lng: pos.lng });
     } catch {
       toast("Speed test failed. Check your connection.", "error");
     }
@@ -108,6 +132,8 @@ export default function AddSpotForm({
       tags: tags ? tags.split(",").map((t) => t.trim()) : null,
       wifi_ssid: wifiSsid.trim() || null,
       wifi_password: wifiPassword || null,
+      test_lat: testPos?.lat,
+      test_lng: testPos?.lng,
     });
     setSubmitting(false);
   }
