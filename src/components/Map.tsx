@@ -144,16 +144,60 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
         },
       });
 
-      // ---- FiberSpot spots (on top) ----
+      // ---- FiberSpot spots (on top, with clustering) ----
       map.addSource("spots", {
         type: "geojson",
         data: spotsGeoJsonRef.current(),
+        cluster: true,
+        clusterMaxZoom: 14,
+        clusterRadius: 50,
       });
+
+      // Cluster bubbles (only when point_count is set).
+      map.addLayer({
+        id: "spots-clusters",
+        type: "circle",
+        source: "spots",
+        filter: ["has", "point_count"],
+        paint: {
+          "circle-color": "#6366f1",
+          "circle-opacity": 0.85,
+          "circle-stroke-color": "#a5b4fc",
+          "circle-stroke-width": 2,
+          "circle-radius": [
+            "step",
+            ["get", "point_count"],
+            18, 10,   // <10 spots → 18px
+            22, 30,   // <30 → 22px
+            28,       // 30+ → 28px
+          ],
+        },
+      });
+
+      map.addLayer({
+        id: "spots-cluster-count",
+        type: "symbol",
+        source: "spots",
+        filter: ["has", "point_count"],
+        layout: {
+          "text-field": ["get", "point_count_abbreviated"],
+          "text-size": 12,
+          "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
+        },
+        paint: {
+          "text-color": "#fff",
+        },
+      });
+
+      // Individual spot layers — explicitly skip clustered features so
+      // singletons don't paint on top of cluster bubbles.
+      const singleSpot = ["!", ["has", "point_count"]] as mapboxgl.FilterSpecification;
 
       map.addLayer({
         id: "spots-glow",
         type: "circle",
         source: "spots",
+        filter: singleSpot,
         paint: {
           "circle-radius": ["interpolate", ["linear"], ["zoom"], 13, 8, 16, 14, 18, 18],
           "circle-color": ["get", "color"],
@@ -166,6 +210,7 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
         id: "spots-circles",
         type: "circle",
         source: "spots",
+        filter: singleSpot,
         paint: {
           "circle-radius": ["interpolate", ["linear"], ["zoom"], 13, 4, 16, 7, 18, 9],
           "circle-color": ["get", "color"],
@@ -180,6 +225,7 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
         id: "spots-labels",
         type: "symbol",
         source: "spots",
+        filter: singleSpot,
         minzoom: 14,
         layout: {
           "text-field": ["get", "name"],
@@ -210,7 +256,7 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
             [point.x - HIT_BUFFER_PX, point.y - HIT_BUFFER_PX],
             [point.x + HIT_BUFFER_PX, point.y + HIT_BUFFER_PX],
           ],
-          { layers: ["spots-circles", "osm-pois-circles"] }
+          { layers: ["spots-clusters", "spots-circles", "osm-pois-circles"] }
         );
 
       map.on("click", (e) => {
@@ -234,6 +280,19 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
         }
 
         const props = best.properties!;
+
+        if (best.layer?.id === "spots-clusters") {
+          // Zoom in until the cluster splits.
+          const clusterId = props.cluster_id as number;
+          const source = map.getSource("spots") as mapboxgl.GeoJSONSource;
+          source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+            if (err || zoom == null || best.geometry.type !== "Point") return;
+            const [lng, lat] = best.geometry.coordinates as [number, number];
+            map.easeTo({ center: [lng, lat], zoom });
+          });
+          return;
+        }
+
         if (best.layer?.id === "spots-circles") {
           const spot = spotsRef.current.find((s) => s.id === props.id);
           if (spot) onSelectSpotRef.current(spot);
@@ -252,8 +311,8 @@ export default function Map({ spots, center, zoom, userLocation, onSelectSpot, o
         }
       });
 
-      // Cursor pointer on hover for both layers
-      for (const layer of ["spots-circles", "osm-pois-circles"]) {
+      // Cursor pointer on hover for clickable layers
+      for (const layer of ["spots-clusters", "spots-circles", "osm-pois-circles"]) {
         map.on("mouseenter", layer, () => {
           map.getCanvas().style.cursor = "pointer";
         });
