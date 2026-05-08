@@ -1818,9 +1818,11 @@ body {
 }
 
 /* ---------- OSM POI cards in the sidebar list ---------- */
+/* No special border — the empty ring dot + "Tap to add & test" hint
+   already make the difference clear. Keep a slight opacity dip so
+   the candidates feel secondary to real Fiberspot entries. */
 .osm-card {
-  border-style: dashed;
-  opacity: 0.85;
+  opacity: 0.78;
 }
 .osm-card:hover {
   opacity: 1;
