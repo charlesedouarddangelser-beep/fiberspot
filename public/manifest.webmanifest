@@ -10,6 +10,24 @@
   "categories": ["utilities", "travel", "productivity"],
   "icons": [
     {
+      "src": "/FS.png",
+      "type": "image/png",
+      "sizes": "1024x1024",
+      "purpose": "any"
+    },
+    {
+      "src": "/FS.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/FS.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
       "src": "/favicon.svg",
       "type": "image/svg+xml",
       "sizes": "any",
