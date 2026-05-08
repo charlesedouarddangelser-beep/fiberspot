@@ -269,8 +269,8 @@ export default function App() {
     toast("Spot added", "success");
   }
 
-  // Fetch Ookla tile estimate for a spot
-  async function getTileEstimate(spot: Spot): Promise<TileEstimate | null> {
+  // Fetch Ookla tile estimate for a spot or POI (any point with lat/lng).
+  async function getTileEstimate(spot: { lat: number; lng: number }): Promise<TileEstimate | null> {
     const qk = latLngToQuadkey(spot.lat, spot.lng, 16);
     if (tileCache[qk]) return tileCache[qk];
 
@@ -290,7 +290,7 @@ export default function App() {
   // Fetch Arcep FTTH coverage for a spot's commune. We resolve the
   // INSEE code via the free api-adresse.data.gouv.fr reverse endpoint
   // (no auth, no quota), then look up the commune row.
-  async function getFiberCommune(spot: Spot): Promise<FiberCommune | null> {
+  async function getFiberCommune(spot: { id: string; lat: number; lng: number }): Promise<FiberCommune | null> {
     const cacheKey = spot.id; // cache per-spot since INSEE is fixed for the lat/lng
     if (cacheKey in fiberCache) return fiberCache[cacheKey];
 
@@ -535,6 +535,8 @@ export default function App() {
           poi={selectedOsmPoi}
           onClose={() => setSelectedOsmPoi(null)}
           onAdd={handleAddOsmPoi}
+          getTileEstimate={getTileEstimate}
+          getFiberCommune={getFiberCommune}
         />
       )}
       {noSpotPrompt && !showForm && !selected && !selectedOsmPoi && (
