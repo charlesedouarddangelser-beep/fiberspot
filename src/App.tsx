@@ -439,7 +439,13 @@ export default function App() {
           onLongPress={handleMapLongPress}
           onOsmPoisChange={setOsmPois}
           typeFilter={typeFilter}
-          selectedSpotId={selected?.id ?? null}
+          highlightCoords={
+            selected
+              ? [selected.lng, selected.lat]
+              : selectedOsmPoi
+                ? [selectedOsmPoi.lng, selectedOsmPoi.lat]
+                : null
+          }
         />
         </Suspense>
         <button className="mobile-toggle" onClick={() => setSidebarOpen((v) => !v)}>

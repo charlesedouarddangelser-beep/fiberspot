@@ -13,7 +13,7 @@ interface Props {
   zoom: number;
   userLocation: [number, number] | null;
   typeFilter: string;
-  selectedSpotId: string | null;
+  highlightCoords: [number, number] | null;
   onSelectSpot: (spot: Spot) => void;
   onSelectOsmPoi: (poi: OsmPoi) => void;
   onRecenter: () => void;
@@ -21,7 +21,7 @@ interface Props {
   onOsmPoisChange?: (pois: OsmPoi[]) => void;
 }
 
-export default function Map({ spots, center, zoom, userLocation, typeFilter, selectedSpotId, onSelectSpot, onSelectOsmPoi, onRecenter, onLongPress, onOsmPoisChange }: Props) {
+export default function Map({ spots, center, zoom, userLocation, typeFilter, highlightCoords, onSelectSpot, onSelectOsmPoi, onRecenter, onLongPress, onOsmPoisChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
@@ -401,38 +401,37 @@ export default function Map({ spots, center, zoom, userLocation, typeFilter, sel
     if (src) src.setData(spotsGeoJson());
   }, [spots, spotsGeoJson]);
 
-  // Fly to center when it changes. On mobile, when a spot is selected
-  // the bottom sheet covers ~75% of the screen — pad the bottom so the
-  // visual centre lands above the sheet, where the user can actually
-  // see the pulsing marker.
+  // Fly to center when it changes. On mobile, when a spot/POI is
+  // selected the bottom sheet covers ~75% of the screen — pad the
+  // bottom so the visual centre lands above the sheet, where the
+  // user can actually see the pulsing marker.
   useEffect(() => {
     if (!mapRef.current) return;
     const isMobile =
       typeof window !== "undefined" &&
       window.matchMedia("(max-width: 600px)").matches;
     const padding =
-      isMobile && selectedSpotId
+      isMobile && highlightCoords
         ? { top: 0, bottom: Math.round(window.innerHeight * 0.6), left: 0, right: 0 }
         : undefined;
     mapRef.current.flyTo({ center, zoom, duration: 1500, padding });
-  }, [center, zoom, selectedSpotId]);
+  }, [center, zoom, highlightCoords]);
 
-  // Pulse-ring on the currently-selected spot, so the side panel and
-  // the dot on the map are visually linked.
+  // Pulse-ring on whatever point the side panel is currently showing
+  // (user-spot OR OSM POI). Coordinates come from the parent so we
+  // don't need to look anything up locally.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     selectedMarkerRef.current?.remove();
     selectedMarkerRef.current = null;
-    if (!selectedSpotId) return;
-    const spot = spots.find((s) => s.id === selectedSpotId);
-    if (!spot) return;
+    if (!highlightCoords) return;
     const el = document.createElement("div");
     el.className = "selected-pulse";
     selectedMarkerRef.current = new mapboxgl.Marker({ element: el })
-      .setLngLat([spot.lng, spot.lat])
+      .setLngLat(highlightCoords)
       .addTo(map);
-  }, [selectedSpotId, spots]);
+  }, [highlightCoords]);
 
   // User location blue dot
   useEffect(() => {
