@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Spot } from "../types/spot";
 import { runSpeedTest } from "../lib/speedtest";
 import { getUserLocation, haversineMeters } from "../lib/geo";
-import { submitSpeedtest, deleteSpot } from "../lib/api";
+import { submitSpeedtest, deleteSpot, updateSpot } from "../lib/api";
 import { useToast } from "../lib/toast";
 import { useAuth } from "../lib/auth";
 import SpeedHistory from "./SpeedHistory";
@@ -99,6 +99,40 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate, 
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showWifiQr, setShowWifiQr] = useState(false);
+  const [editingWifi, setEditingWifi] = useState(false);
+  const [wifiSsidDraft, setWifiSsidDraft] = useState(spot.wifi_ssid ?? "");
+  const [wifiPasswordDraft, setWifiPasswordDraft] = useState(spot.wifi_password ?? "");
+  const [savingWifi, setSavingWifi] = useState(false);
+
+  // Reset Wi-Fi drafts whenever the displayed spot changes (e.g. user
+  // navigates to a different spot from the list).
+  useEffect(() => {
+    setWifiSsidDraft(spot.wifi_ssid ?? "");
+    setWifiPasswordDraft(spot.wifi_password ?? "");
+    setEditingWifi(false);
+  }, [spot.id, spot.wifi_ssid, spot.wifi_password]);
+
+  async function saveWifi() {
+    setSavingWifi(true);
+    try {
+      await updateSpot(spot.id, {
+        wifi_ssid: wifiSsidDraft.trim() || null,
+        wifi_password: wifiPasswordDraft || null,
+      });
+      toast("Wi-Fi info saved", "success");
+      setEditingWifi(false);
+      onUpdated();
+    } catch (e) {
+      toast((e as Error).message || "Failed to save", "error");
+    }
+    setSavingWifi(false);
+  }
+
+  function cancelWifiEdit() {
+    setWifiSsidDraft(spot.wifi_ssid ?? "");
+    setWifiPasswordDraft(spot.wifi_password ?? "");
+    setEditingWifi(false);
+  }
 
   const isOwner = !!user && !!spot.author_id && user.id === spot.author_id;
 
@@ -279,19 +313,69 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate, 
         </div>
       )}
 
-      {(spot.wifi_ssid || spot.wifi_password) && (
+      {editingWifi ? (
+        <div className="wifi-info">
+          <p className="wifi-label">Wi-Fi</p>
+          <div className="wifi-edit">
+            <input
+              type="text"
+              className="wifi-edit-input"
+              value={wifiSsidDraft}
+              onChange={(e) => setWifiSsidDraft(e.target.value)}
+              placeholder="Network name (SSID)"
+              autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+            />
+            <input
+              type="text"
+              className="wifi-edit-input"
+              value={wifiPasswordDraft}
+              onChange={(e) => setWifiPasswordDraft(e.target.value)}
+              placeholder="Password (only if publicly shared)"
+              autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+            />
+            <div className="wifi-edit-actions">
+              <button type="button" className="btn-secondary" onClick={cancelWifiEdit}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={saveWifi}
+                disabled={savingWifi}
+              >
+                {savingWifi ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : spot.wifi_ssid || spot.wifi_password ? (
         <div className="wifi-info">
           <div className="wifi-info-header">
             <p className="wifi-label">Wi-Fi</p>
-            {spot.wifi_ssid && (
-              <button
-                type="button"
-                className="wifi-qr-toggle"
-                onClick={() => setShowWifiQr((v) => !v)}
-              >
-                {showWifiQr ? "Hide QR" : "Show QR"}
-              </button>
-            )}
+            <div className="wifi-info-header-actions">
+              {spot.wifi_ssid && (
+                <button
+                  type="button"
+                  className="wifi-qr-toggle"
+                  onClick={() => setShowWifiQr((v) => !v)}
+                >
+                  {showWifiQr ? "Hide QR" : "Show QR"}
+                </button>
+              )}
+              {isOwner && (
+                <button
+                  type="button"
+                  className="wifi-qr-toggle"
+                  onClick={() => setEditingWifi(true)}
+                >
+                  Edit
+                </button>
+              )}
+            </div>
           </div>
           {spot.wifi_ssid && (
             <div className="wifi-row">
@@ -325,7 +409,15 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate, 
             <WifiQR ssid={spot.wifi_ssid} password={spot.wifi_password} />
           )}
         </div>
-      )}
+      ) : isOwner ? (
+        <button
+          type="button"
+          className="wifi-add-cta"
+          onClick={() => setEditingWifi(true)}
+        >
+          + Add Wi-Fi network &amp; password
+        </button>
+      ) : null}
 
       {hasSpeedData(spot) ? (
         <>
