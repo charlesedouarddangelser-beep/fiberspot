@@ -3,7 +3,11 @@ import { supabaseAdmin } from "./_lib/supabase";
 export const config = { runtime: "edge" };
 
 const SITE_URL = "https://fiberspot.vercel.app";
-const DEFAULT_IMAGE = `${SITE_URL}/og-default.png`;
+// /api/og-image renders a tailored 1200×630 PNG per spot via @vercel/og;
+// the bot uses it as the share preview thumbnail. The query string forces
+// upstream caches to fetch a fresh card per spot id.
+const ogImageUrl = (id: string | null) =>
+  id ? `${SITE_URL}/api/og-image?id=${encodeURIComponent(id)}` : `${SITE_URL}/api/og-image`;
 
 function escapeHtml(s: string): string {
   return s
@@ -85,7 +89,7 @@ export default async function handler(req: Request) {
         description:
           "Community-driven map of Wi-Fi spots. Find a fast connection nearby, contribute the ones you know, test them on the spot.",
         url: SITE_URL,
-        image: DEFAULT_IMAGE,
+        image: ogImageUrl(null),
       }),
       { status: 200, headers: { "content-type": "text/html; charset=utf-8" } }
     );
@@ -103,7 +107,7 @@ export default async function handler(req: Request) {
         title: "Spot not found — Fiberspot",
         description: "This Wi-Fi spot doesn't exist anymore.",
         url: `${SITE_URL}/spot/${id}`,
-        image: DEFAULT_IMAGE,
+        image: ogImageUrl(null),
       }),
       { status: 404, headers: { "content-type": "text/html; charset=utf-8" } }
     );
@@ -114,7 +118,7 @@ export default async function handler(req: Request) {
       title: `${spot.name} on Fiberspot`,
       description: buildDescription(spot),
       url: `${SITE_URL}/spot/${id}`,
-      image: DEFAULT_IMAGE,
+      image: ogImageUrl(id),
     }),
     {
       status: 200,
