@@ -1,9 +1,27 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Spot } from "../types/spot";
 import type { OsmPoi } from "../types/osm";
 import { haversineMeters } from "../lib/geo";
 import GeocodingSearch from "./GeocodingSearch";
 import { typeIcon } from "../lib/spot-icons";
+
+// Persisted filter state — keyed by version so future incompatible
+// shapes can be invalidated.
+const FILTERS_STORAGE_KEY = "fiberspot.filters.v1";
+
+function readPersistedFilters(): { nearMe: boolean; nameFilter: string } | null {
+  try {
+    const raw = localStorage.getItem(FILTERS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { nearMe?: unknown; nameFilter?: unknown };
+    return {
+      nearMe: typeof parsed.nearMe === "boolean" ? parsed.nearMe : false,
+      nameFilter: typeof parsed.nameFilter === "string" ? parsed.nameFilter : "",
+    };
+  } catch {
+    return null;
+  }
+}
 
 const TYPES = ["All", "Cafe", "Library", "Coworking", "Hotel", "Restaurant", "Park", "Other"];
 const NEAR_ME_RADIUS = 500; // meters
@@ -39,6 +57,20 @@ function formatDist(m: number): string {
   return `${(m / 1000).toFixed(1)}km`;
 }
 
+function formatRelativeTime(isoDate: string): string {
+  const ms = Date.now() - new Date(isoDate).getTime();
+  const min = Math.round(ms / 60000);
+  if (min < 1) return "just now";
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.round(hr / 24);
+  if (day < 30) return `${day}d ago`;
+  const mo = Math.round(day / 30);
+  if (mo < 12) return `${mo}mo ago`;
+  return `${Math.round(mo / 12)}y ago`;
+}
+
 export default function Sidebar({
   spots,
   osmPois,
@@ -52,8 +84,21 @@ export default function Sidebar({
   onSearchSelect,
 }: Props) {
   void _onFlyTo;
-  const [nameFilter, setNameFilter] = useState("");
-  const [nearMe, setNearMe] = useState(false);
+  const persisted = useMemo(() => readPersistedFilters(), []);
+  const [nameFilter, setNameFilter] = useState<string>(persisted?.nameFilter ?? "");
+  const [nearMe, setNearMe] = useState<boolean>(persisted?.nearMe ?? false);
+
+  // Persist filters whenever they change.
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        FILTERS_STORAGE_KEY,
+        JSON.stringify({ nameFilter, nearMe })
+      );
+    } catch {
+      // ignore quota / disabled storage
+    }
+  }, [nameFilter, nearMe]);
 
   // Build a unified list: user-spots always; OSM POIs only when we have
   // a user location (otherwise distance is meaningless and the cap
@@ -202,11 +247,16 @@ export default function Sidebar({
               </div>
               <span className="spot-type">{typeIcon(it.spot.type)} {it.spot.type}</span>
               {it.spot.avg_download !== null ? (
-                <span className="spot-speed-row">
-                  <span className="spot-speed-item dl">↓{it.spot.avg_download}</span>
-                  <span className="spot-speed-item ul">↑{it.spot.avg_upload ?? "–"}</span>
-                  <span className="spot-speed-item ping">{it.spot.avg_ping ?? "–"}ms</span>
-                </span>
+                <>
+                  <span className="spot-speed-row">
+                    <span className="spot-speed-item dl">↓{it.spot.avg_download}</span>
+                    <span className="spot-speed-item ul">↑{it.spot.avg_upload ?? "–"}</span>
+                    <span className="spot-speed-item ping">{it.spot.avg_ping ?? "–"}ms</span>
+                  </span>
+                  {it.spot.last_tested_at && (
+                    <span className="spot-tested-at">Tested {formatRelativeTime(it.spot.last_tested_at)}</span>
+                  )}
+                </>
               ) : (
                 <span className="spot-speed untested">Not yet tested</span>
               )}

@@ -377,6 +377,9 @@ export default function App() {
         />
         <button className="mobile-toggle" onClick={() => setSidebarOpen((v) => !v)}>
           {sidebarOpen ? "✕" : "☰"} Spots
+          {!sidebarOpen && spots.length > 0 && (
+            <span className="mobile-toggle-count">{spots.length}</span>
+          )}
         </button>
         <AuthControl />
         <DonateModal />

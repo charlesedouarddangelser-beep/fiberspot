@@ -1076,6 +1076,22 @@ body {
     transform: translateX(-50%) scale(0.96);
   }
 
+  .mobile-toggle-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 7px;
+    margin-left: 4px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 11px;
+    line-height: 1;
+  }
+
   /* ---- Detail / Form panels — bottom sheet ---- */
   .detail-panel {
     position: fixed;
@@ -1351,6 +1367,14 @@ body {
   .speed-legend {
     padding: 6px 16px 2px;
   }
+}
+
+.spot-tested-at {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--text-dim);
+  opacity: 0.85;
 }
 
 /* ---------- OSM POI cards in the sidebar list ---------- */
