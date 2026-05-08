@@ -1186,6 +1186,16 @@ body {
   .form-panel select {
     min-height: 44px;
     font-size: 16px;
+    /* Keep ~280px of buffer below a focused input so iOS scrolls it into
+       view with room for the keyboard + the action button underneath. */
+    scroll-margin-bottom: 280px;
+  }
+
+  /* Extra bottom padding inside the form so the Save button never sits
+     behind the on-screen keyboard. The viewport meta resizes the layout
+     on iOS 17+, but older devices and Brave still need the cushion. */
+  .form-panel form {
+    padding-bottom: 24px;
   }
 }
 
