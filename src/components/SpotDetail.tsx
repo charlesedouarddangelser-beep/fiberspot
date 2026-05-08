@@ -283,6 +283,15 @@ export default function SpotDetail({ spot, onClose, onUpdated, getTileEstimate }
         </div>
       )}
 
+      {testing && (
+        <div className="speed-test-progress" aria-live="polite">
+          <div className="speed-test-bar">
+            <div className="speed-test-bar-fill" />
+          </div>
+          <span className="speed-test-phase">{phase || "Testing…"}</span>
+        </div>
+      )}
+
       {tooFarMsg && <p className="too-far-msg">{tooFarMsg}</p>}
 
       {spot.tags && spot.tags.length > 0 && (

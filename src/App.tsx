@@ -23,8 +23,30 @@ interface TileEstimate {
 export default function App() {
   const toast = useToast();
   const [spots, setSpots] = useState<Spot[]>([]);
-  const [center, setCenter] = useState<[number, number]>([-73.985, 40.748]);
-  const [zoom, setZoom] = useState(13);
+  // Restore the last viewport so returning users land where they left
+  // off, instead of staring at a generic world view (or worse, NYC).
+  const initialView = (() => {
+    try {
+      const raw = localStorage.getItem("fiberspot.view.v1");
+      if (!raw) return null;
+      const v = JSON.parse(raw) as { lng?: unknown; lat?: unknown; zoom?: unknown };
+      if (
+        typeof v.lng === "number" &&
+        typeof v.lat === "number" &&
+        typeof v.zoom === "number"
+      ) {
+        return v as { lng: number; lat: number; zoom: number };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const [center, setCenter] = useState<[number, number]>(
+    initialView ? [initialView.lng, initialView.lat] : [0, 30]
+  );
+  const [zoom, setZoom] = useState(initialView ? initialView.zoom : 2);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [selected, setSelected] = useState<Spot | null>(null);
   const [selectedOsmPoi, setSelectedOsmPoi] = useState<OsmPoi | null>(null);
@@ -69,6 +91,19 @@ export default function App() {
     else if (!sidebarOpen && dy < -80) setSidebarOpen(true);
     dragStart.current = null;
   }
+
+  // Save the current viewport on every change so the next visit can
+  // pick up where the user left off.
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "fiberspot.view.v1",
+        JSON.stringify({ lng: center[0], lat: center[1], zoom })
+      );
+    } catch {
+      // ignore quota / disabled storage
+    }
+  }, [center, zoom]);
 
   // First-run hint — fired once per device. Tells new users about the
   // long-press gesture they'd never discover on their own.
